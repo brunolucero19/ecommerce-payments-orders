@@ -14,4 +14,13 @@ func Init(deps di.Injector) {
 	go listenLogout(logger)
 
 	go listenPlaceOrder(logger)
+
+	// Payment event consumers
+	go listenPaymentSuccess(logger)
+
+	go listenPaymentPartial(logger)
+
+	go listenPaymentFailed(logger)
+
+	go listenPaymentRefunded(logger)
 }

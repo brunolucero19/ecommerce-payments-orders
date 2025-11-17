@@ -53,9 +53,14 @@ type Article struct {
 }
 
 type PaymentEvent struct {
-	OrderId string        `bson:"orderId" binding:"required"`
-	Method  PaymentMethod `bson:"metod" binding:"required"`
-	Amount  float32       `bson:"amount" binding:"required"`
+	OrderId       string `bson:"orderId" binding:"required"`
+	Method        string `bson:"method" binding:"required"`
+	Amount        float32 `bson:"amount" binding:"required"`
+	PaymentId     string `bson:"paymentId"`
+	TransactionId string `bson:"transactionId"`
+	Status        string `bson:"status"` // approved, rejected, refunded
+	ErrorMessage  string `bson:"errorMessage,omitempty"`
+	ErrorCode     string `bson:"errorCode,omitempty"`
 }
 
 type ValidationEvent struct {

@@ -15,6 +15,8 @@ const (
 	Invalid         OrderStatus = "invalid"
 	Validated       OrderStatus = "validated"
 	Payment_Defined OrderStatus = "payment_defined"
+	PartiallyPaid   OrderStatus = "partially_paid"
+	Paid            OrderStatus = "paid"
 )
 
 // Estuctura basica de del evento
@@ -42,8 +44,13 @@ type Article struct {
 }
 
 type PaymentEvent struct {
-	Method events.PaymentMethod `bson:"metod" json:"method"`
-	Amount float32              `bson:"amount" json:"amount"`
+	PaymentID     string `bson:"paymentId" json:"paymentId"`
+	Method        string `bson:"method" json:"method"`
+	Amount        float32 `bson:"amount" json:"amount"`
+	TransactionID string `bson:"transactionId" json:"transactionId"`
+	Status        string `bson:"status" json:"status"` // approved, rejected, refunded
+	ErrorMessage  string `bson:"errorMessage,omitempty" json:"errorMessage,omitempty"`
+	ErrorCode     string `bson:"errorCode,omitempty" json:"errorCode,omitempty"`
 }
 
 // ValidateSchema valida la estructura para ser insertada en la db

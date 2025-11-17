@@ -99,11 +99,31 @@ func (s *orderService) updateValidation(o *Order, e *events.Event) *Order {
 
 func (s *orderService) updatePayment(o *Order, e *events.Event) *Order {
 	o.Payments = append(o.Payments, &PaymentEvent{
-		Method: e.Payment.Method,
-		Amount: e.Payment.Amount,
+		PaymentID:     e.Payment.PaymentId,
+		Method:        e.Payment.Method,
+		Amount:        e.Payment.Amount,
+		TransactionID: e.Payment.TransactionId,
+		Status:        e.Payment.Status,
+		ErrorMessage:  e.Payment.ErrorMessage,
+		ErrorCode:     e.Payment.ErrorCode,
 	})
 
-	if o.TotalPayment() >= o.TotalPrice() {
+	// Calcular total de pagos aprobados
+	var totalApproved float32
+	for _, p := range o.Payments {
+		if p.Status == "approved" {
+			totalApproved += p.Amount
+		}
+	}
+
+	// Actualizar estado según pagos
+	totalPrice := o.TotalPrice()
+	if totalApproved >= totalPrice && totalPrice > 0 {
+		o.Status = Paid
+	} else if totalApproved > 0 {
+		o.Status = PartiallyPaid
+	} else if o.Status == Paid || o.Status == PartiallyPaid {
+		// Si había pagos pero se reembolsaron todos
 		o.Status = Payment_Defined
 	}
 
