@@ -1,0 +1,143 @@
+'use strict'
+
+import { Request, Response } from 'express'
+import * as walletService from '../../domain/wallet/service'
+import { handle } from '../../server/error'
+
+/**
+ * POST /api/wallet/deposit
+ *
+ * Deposita fondos en la wallet del usuario autenticado
+ *
+ * Body:
+ * {
+ *   "amount": 1000
+ * }
+ *
+ * Response:
+ * {
+ *   "userId": "user123",
+ *   "balance": 1500,
+ *   "currency": "ARS"
+ * }
+ */
+export async function deposit(req: Request, res: Response) {
+  try {
+    // El userId viene de req.user (inyectado por validateToken middleware)
+    const userId = req.user!.id
+    const { amount } = req.body
+
+    // Validaciones básicas
+    if (!amount) {
+      return res.status(400).send({
+        error: 'amount es requerido',
+      })
+    }
+
+    if (typeof amount !== 'number' || amount <= 0) {
+      return res.status(400).send({
+        error: 'El amount debe ser un número mayor a 0',
+      })
+    }
+
+    // Depositar en la wallet
+    const wallet = await walletService.deposit(userId, amount)
+
+    return res.status(200).send({
+      userId: wallet.userId,
+      balance: wallet.balance,
+      currency: wallet.currency,
+      message: `Se depositaron $${amount} ${wallet.currency} exitosamente`,
+    })
+  } catch (err) {
+    return handle(res, err)
+  }
+}
+
+/**
+ * GET /api/wallet/balance
+ *
+ * Consulta el saldo actual de la wallet del usuario autenticado
+ *
+ * Response:
+ * {
+ *   "userId": "user123",
+ *   "balance": 1500,
+ *   "currency": "ARS"
+ * }
+ */
+export async function getBalance(req: Request, res: Response) {
+  try {
+    // El userId viene de req.user (inyectado por validateToken middleware)
+    const userId = req.user!.id
+
+    // Obtener balance
+    const balance = await walletService.getBalance(userId)
+
+    return res.status(200).send({
+      userId: userId,
+      balance: balance,
+      currency: 'ARS',
+    })
+  } catch (err) {
+    return handle(res, err)
+  }
+}
+
+/**
+ * POST /api/wallet/refund
+ *
+ * Procesa un reembolso acreditando fondos a la wallet del usuario autenticado
+ *
+ * Body:
+ * {
+ *   "amount": 500,
+ *   "reason": "Order canceled"
+ * }
+ *
+ * Response:
+ * {
+ *   "userId": "user123",
+ *   "balance": 2000,
+ *   "currency": "ARS",
+ *   "message": "Reembolso procesado: Order canceled"
+ * }
+ */
+export async function refund(req: Request, res: Response) {
+  try {
+    // El userId viene de req.user (inyectado por validateToken middleware)
+    const userId = req.user!.id
+    const { amount, reason } = req.body
+
+    // Validaciones
+    if (!amount) {
+      return res.status(400).send({
+        error: 'amount es requerido',
+      })
+    }
+
+    if (typeof amount !== 'number' || amount <= 0) {
+      return res.status(400).send({
+        error: 'El amount debe ser un número mayor a 0',
+      })
+    }
+
+    // Procesar reembolso
+    const wallet = await walletService.refund(
+      userId,
+      amount,
+      reason || 'Refund processed'
+    )
+
+    return res.status(200).send({
+      userId: wallet.userId,
+      balance: wallet.balance,
+      currency: wallet.currency,
+      message: `Reembolso de $${amount} ${wallet.currency} procesado${
+        reason ? ': ' + reason : ''
+      }`,
+    })
+  } catch (err) {
+    return handle(res, err)
+  }
+}

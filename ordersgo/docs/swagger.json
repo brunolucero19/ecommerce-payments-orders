@@ -1,0 +1,647 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Microservicio de Ordenes.",
+        "title": "OrdersGo",
+        "contact": {
+            "name": "Nestor Marsollier",
+            "email": "nmarsollier@gmail.com"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:3004",
+    "basePath": "/v1",
+    "paths": {
+        "/orders": {
+            "get": {
+                "description": "Busca todas las ordenes del usuario logueado.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Ordenes"
+                ],
+                "summary": "Ordenes de Usuario",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ordenes",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/rest.OrderListData"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errs.ValidationErr"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rst.ErrorData"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rst.ErrorData"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rst.ErrorData"
+                        }
+                    }
+                }
+            }
+        },
+        "/orders/:orderId": {
+            "get": {
+                "description": "Busca una order del usuario logueado, por su id.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Ordenes"
+                ],
+                "summary": "Buscar Orden",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID de orden",
+                        "name": "orderId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ordenes",
+                        "schema": {
+                            "$ref": "#/definitions/order.Order"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errs.ValidationErr"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rst.ErrorData"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rst.ErrorData"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rst.ErrorData"
+                        }
+                    }
+                }
+            }
+        },
+        "/orders/:orderId/payment": {
+            "post": {
+                "description": "Agrega un Pago",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Ordenes"
+                ],
+                "summary": "Agrega un Pago",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID de orden",
+                        "name": "orderId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Informacion del pago",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/events.PaymentEvent"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ordenes",
+                        "schema": {
+                            "$ref": "#/definitions/order.Order"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errs.ValidationErr"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/rst.ErrorData"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/rst.ErrorData"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/rst.ErrorData"
+                        }
+                    }
+                }
+            }
+        },
+        "/orders/:orderId/update": {
+            "get": {
+                "description": "Actualiza las proyecciones en caso que hayamos roto algo.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Ordenes"
+                ],
+                "summary": "Actualiza la proyeccion",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID de orden",
+                        "name": "orderId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/rabbit/article_exist": {
+            "get": {
+                "description": "Antes de iniciar las operaciones se validan los artículos contra el catalogo.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Rabbit"
+                ],
+                "summary": "Mensage Rabbit article_exist/order_article_exist",
+                "parameters": [
+                    {
+                        "description": "Consume article_exist/order_article_exist",
+                        "name": "article_exist",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rbt.InputMessage-events_ValidationEvent"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/rabbit/logout": {
+            "get": {
+                "description": "Escucha de mensajes logout desde auth.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Rabbit"
+                ],
+                "summary": "Mensage Rabbit logout",
+                "parameters": [
+                    {
+                        "description": "Estructura general del mensage",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rbt.InputMessage-string"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/rabbit/place_order": {
+            "get": {
+                "description": "Cuando se consume place_order se genera la orden y se inicia el proceso.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Rabbit"
+                ],
+                "summary": "Mensage Rabbit place_order/order_place_order",
+                "parameters": [
+                    {
+                        "description": "Consume place_order/order_place_order",
+                        "name": "place_order",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rbt.InputMessage-events_PlacedOrderData"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        }
+    },
+    "definitions": {
+        "errs.ValidationErr": {
+            "type": "object",
+            "properties": {
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/errs.errField"
+                    }
+                }
+            }
+        },
+        "errs.errField": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                }
+            }
+        },
+        "events.PaymentEvent": {
+            "type": "object",
+            "required": [
+                "amount",
+                "method",
+                "orderId"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "method": {
+                    "$ref": "#/definitions/events.PaymentMethod"
+                },
+                "orderId": {
+                    "type": "string"
+                }
+            }
+        },
+        "events.PaymentMethod": {
+            "type": "string",
+            "enum": [
+                "CASH",
+                "CREDIT",
+                "DEBIT"
+            ],
+            "x-enum-varnames": [
+                "Cash",
+                "Credit",
+                "Debit"
+            ]
+        },
+        "events.PlacePrderArticleData": {
+            "type": "object",
+            "required": [
+                "id",
+                "quantity"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1
+                },
+                "quantity": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            }
+        },
+        "events.PlacedOrderData": {
+            "type": "object",
+            "required": [
+                "articles",
+                "cartId",
+                "userId"
+            ],
+            "properties": {
+                "articles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/events.PlacePrderArticleData"
+                    }
+                },
+                "cartId": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1
+                },
+                "userId": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1
+                }
+            }
+        },
+        "events.ValidationEvent": {
+            "type": "object",
+            "properties": {
+                "articleId": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "referenceId": {
+                    "type": "string"
+                },
+                "stock": {
+                    "type": "integer"
+                },
+                "valid": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "order.Article": {
+            "type": "object",
+            "required": [
+                "articleId",
+                "quantity"
+            ],
+            "properties": {
+                "articleId": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1
+                },
+                "isValid": {
+                    "type": "boolean"
+                },
+                "isValidated": {
+                    "type": "boolean"
+                },
+                "quantity": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "unitaryPrice": {
+                    "type": "number"
+                }
+            }
+        },
+        "order.Order": {
+            "type": "object",
+            "required": [
+                "cartId",
+                "orderId",
+                "status",
+                "userId"
+            ],
+            "properties": {
+                "articles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/order.Article"
+                    }
+                },
+                "cartId": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1
+                },
+                "created": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "orderId": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1
+                },
+                "payments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/order.PaymentEvent"
+                    }
+                },
+                "status": {
+                    "$ref": "#/definitions/order.OrderStatus"
+                },
+                "updated": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1
+                }
+            }
+        },
+        "order.OrderStatus": {
+            "type": "string",
+            "enum": [
+                "placed",
+                "invalid",
+                "validated",
+                "payment_defined"
+            ],
+            "x-enum-varnames": [
+                "Placed",
+                "Invalid",
+                "Validated",
+                "Payment_Defined"
+            ]
+        },
+        "order.PaymentEvent": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "method": {
+                    "$ref": "#/definitions/events.PaymentMethod"
+                }
+            }
+        },
+        "rbt.InputMessage-events_PlacedOrderData": {
+            "type": "object",
+            "properties": {
+                "correlation_id": {
+                    "type": "string",
+                    "example": "123123"
+                },
+                "exchange": {
+                    "type": "string",
+                    "example": "Remote Exchange to Reply"
+                },
+                "message": {
+                    "$ref": "#/definitions/events.PlacedOrderData"
+                },
+                "routing_key": {
+                    "type": "string",
+                    "example": "Remote RoutingKey to Reply"
+                }
+            }
+        },
+        "rbt.InputMessage-events_ValidationEvent": {
+            "type": "object",
+            "properties": {
+                "correlation_id": {
+                    "type": "string",
+                    "example": "123123"
+                },
+                "exchange": {
+                    "type": "string",
+                    "example": "Remote Exchange to Reply"
+                },
+                "message": {
+                    "$ref": "#/definitions/events.ValidationEvent"
+                },
+                "routing_key": {
+                    "type": "string",
+                    "example": "Remote RoutingKey to Reply"
+                }
+            }
+        },
+        "rbt.InputMessage-string": {
+            "type": "object",
+            "properties": {
+                "correlation_id": {
+                    "type": "string",
+                    "example": "123123"
+                },
+                "exchange": {
+                    "type": "string",
+                    "example": "Remote Exchange to Reply"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "routing_key": {
+                    "type": "string",
+                    "example": "Remote RoutingKey to Reply"
+                }
+            }
+        },
+        "rest.OrderListData": {
+            "type": "object",
+            "properties": {
+                "articles": {
+                    "type": "integer"
+                },
+                "cartId": {
+                    "type": "string"
+                },
+                "created": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/order.OrderStatus"
+                },
+                "totalPayment": {
+                    "type": "number"
+                },
+                "totalPrice": {
+                    "type": "number"
+                },
+                "updated": {
+                    "type": "string"
+                }
+            }
+        },
+        "rst.ErrorData": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

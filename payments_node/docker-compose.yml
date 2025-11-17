@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # MongoDB para payments_node
+  # Nota: RabbitMQ se levanta por separado y es compartido entre microservicios
+  mongo:
+    image: mongo:8.2.1
+    container_name: payments_mongo
+    restart: unless-stopped
+    ports:
+      - '27018:27017' # Puerto 27018 para no colisionar con otros microservicios (usan 27017 con Mongo 6.0)
+    environment:
+      MONGO_INITDB_DATABASE: payments_db
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/payments_db --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Payments Microservice (opcional)
+  # Alternativa a ejecutar con npm start en el host
+  payments:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: payments_service
+    restart: unless-stopped
+    ports:
+      - '3005:3005'
+    environment:
+      SERVER_PORT: 3005
+      LOG_LEVEL: debug
+      MONGO_URL: mongodb://mongo:27017/payments_db
+      RABBIT_URL: amqp://host.docker.internal # RabbitMQ corriendo en el host
+      JWT_SECRET: +b59WQF+kUDr0TGxevzpRV3ixMvyIQuD1O
+      AUTH_SERVICE_URL: http://host.docker.internal:3000
+      ORDERS_SERVICE_URL: http://host.docker.internal:3004
+    depends_on:
+      mongo:
+        condition: service_healthy
+    # Descomentar profiles para que NO se levante por defecto con docker-compose up
+    # profiles:
+    #   - full
+
+volumes:
+  mongo_data:
+    driver: local

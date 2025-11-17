@@ -1,0 +1,443 @@
+basePath: /v1
+definitions:
+  errs.ValidationErr:
+    properties:
+      messages:
+        items:
+          $ref: '#/definitions/errs.errField'
+        type: array
+    type: object
+  errs.errField:
+    properties:
+      message:
+        type: string
+      path:
+        type: string
+    type: object
+  events.PaymentEvent:
+    properties:
+      amount:
+        type: number
+      method:
+        $ref: '#/definitions/events.PaymentMethod'
+      orderId:
+        type: string
+    required:
+    - amount
+    - method
+    - orderId
+    type: object
+  events.PaymentMethod:
+    enum:
+    - CASH
+    - CREDIT
+    - DEBIT
+    type: string
+    x-enum-varnames:
+    - Cash
+    - Credit
+    - Debit
+  events.PlacePrderArticleData:
+    properties:
+      id:
+        maxLength: 100
+        minLength: 1
+        type: string
+      quantity:
+        minimum: 1
+        type: integer
+    required:
+    - id
+    - quantity
+    type: object
+  events.PlacedOrderData:
+    properties:
+      articles:
+        items:
+          $ref: '#/definitions/events.PlacePrderArticleData'
+        type: array
+      cartId:
+        maxLength: 100
+        minLength: 1
+        type: string
+      userId:
+        maxLength: 100
+        minLength: 1
+        type: string
+    required:
+    - articles
+    - cartId
+    - userId
+    type: object
+  events.ValidationEvent:
+    properties:
+      articleId:
+        type: string
+      price:
+        type: number
+      referenceId:
+        type: string
+      stock:
+        type: integer
+      valid:
+        type: boolean
+    type: object
+  order.Article:
+    properties:
+      articleId:
+        maxLength: 100
+        minLength: 1
+        type: string
+      isValid:
+        type: boolean
+      isValidated:
+        type: boolean
+      quantity:
+        minimum: 1
+        type: integer
+      unitaryPrice:
+        type: number
+    required:
+    - articleId
+    - quantity
+    type: object
+  order.Order:
+    properties:
+      articles:
+        items:
+          $ref: '#/definitions/order.Article'
+        type: array
+      cartId:
+        maxLength: 100
+        minLength: 1
+        type: string
+      created:
+        type: string
+      id:
+        type: string
+      orderId:
+        maxLength: 100
+        minLength: 1
+        type: string
+      payments:
+        items:
+          $ref: '#/definitions/order.PaymentEvent'
+        type: array
+      status:
+        $ref: '#/definitions/order.OrderStatus'
+      updated:
+        type: string
+      userId:
+        maxLength: 100
+        minLength: 1
+        type: string
+    required:
+    - cartId
+    - orderId
+    - status
+    - userId
+    type: object
+  order.OrderStatus:
+    enum:
+    - placed
+    - invalid
+    - validated
+    - payment_defined
+    type: string
+    x-enum-varnames:
+    - Placed
+    - Invalid
+    - Validated
+    - Payment_Defined
+  order.PaymentEvent:
+    properties:
+      amount:
+        type: number
+      method:
+        $ref: '#/definitions/events.PaymentMethod'
+    type: object
+  rbt.InputMessage-events_PlacedOrderData:
+    properties:
+      correlation_id:
+        example: "123123"
+        type: string
+      exchange:
+        example: Remote Exchange to Reply
+        type: string
+      message:
+        $ref: '#/definitions/events.PlacedOrderData'
+      routing_key:
+        example: Remote RoutingKey to Reply
+        type: string
+    type: object
+  rbt.InputMessage-events_ValidationEvent:
+    properties:
+      correlation_id:
+        example: "123123"
+        type: string
+      exchange:
+        example: Remote Exchange to Reply
+        type: string
+      message:
+        $ref: '#/definitions/events.ValidationEvent'
+      routing_key:
+        example: Remote RoutingKey to Reply
+        type: string
+    type: object
+  rbt.InputMessage-string:
+    properties:
+      correlation_id:
+        example: "123123"
+        type: string
+      exchange:
+        example: Remote Exchange to Reply
+        type: string
+      message:
+        type: string
+      routing_key:
+        example: Remote RoutingKey to Reply
+        type: string
+    type: object
+  rest.OrderListData:
+    properties:
+      articles:
+        type: integer
+      cartId:
+        type: string
+      created:
+        type: string
+      id:
+        type: string
+      status:
+        $ref: '#/definitions/order.OrderStatus'
+      totalPayment:
+        type: number
+      totalPrice:
+        type: number
+      updated:
+        type: string
+    type: object
+  rst.ErrorData:
+    properties:
+      error:
+        type: string
+    type: object
+host: localhost:3004
+info:
+  contact:
+    email: nmarsollier@gmail.com
+    name: Nestor Marsollier
+  description: Microservicio de Ordenes.
+  title: OrdersGo
+  version: "1.0"
+paths:
+  /orders:
+    get:
+      consumes:
+      - application/json
+      description: Busca todas las ordenes del usuario logueado.
+      parameters:
+      - description: Bearer {token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Ordenes
+          schema:
+            items:
+              $ref: '#/definitions/rest.OrderListData'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errs.ValidationErr'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rst.ErrorData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/rst.ErrorData'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/rst.ErrorData'
+      summary: Ordenes de Usuario
+      tags:
+      - Ordenes
+  /orders/:orderId:
+    get:
+      consumes:
+      - application/json
+      description: Busca una order del usuario logueado, por su id.
+      parameters:
+      - description: ID de orden
+        in: path
+        name: orderId
+        required: true
+        type: string
+      - description: Bearer {token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Ordenes
+          schema:
+            $ref: '#/definitions/order.Order'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errs.ValidationErr'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rst.ErrorData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/rst.ErrorData'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/rst.ErrorData'
+      summary: Buscar Orden
+      tags:
+      - Ordenes
+  /orders/:orderId/payment:
+    post:
+      consumes:
+      - application/json
+      description: Agrega un Pago
+      parameters:
+      - description: ID de orden
+        in: path
+        name: orderId
+        required: true
+        type: string
+      - description: Bearer {token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Informacion del pago
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/events.PaymentEvent'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Ordenes
+          schema:
+            $ref: '#/definitions/order.Order'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errs.ValidationErr'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rst.ErrorData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/rst.ErrorData'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/rst.ErrorData'
+      summary: Agrega un Pago
+      tags:
+      - Ordenes
+  /orders/:orderId/update:
+    get:
+      consumes:
+      - application/json
+      description: Actualiza las proyecciones en caso que hayamos roto algo.
+      parameters:
+      - description: Bearer {token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID de orden
+        in: path
+        name: orderId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: No Content
+      summary: Actualiza la proyeccion
+      tags:
+      - Ordenes
+  /rabbit/article_exist:
+    get:
+      consumes:
+      - application/json
+      description: Antes de iniciar las operaciones se validan los artículos contra
+        el catalogo.
+      parameters:
+      - description: Consume article_exist/order_article_exist
+        in: body
+        name: article_exist
+        required: true
+        schema:
+          $ref: '#/definitions/rbt.InputMessage-events_ValidationEvent'
+      produces:
+      - application/json
+      responses: {}
+      summary: Mensage Rabbit article_exist/order_article_exist
+      tags:
+      - Rabbit
+  /rabbit/logout:
+    get:
+      consumes:
+      - application/json
+      description: Escucha de mensajes logout desde auth.
+      parameters:
+      - description: Estructura general del mensage
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/rbt.InputMessage-string'
+      produces:
+      - application/json
+      responses: {}
+      summary: Mensage Rabbit logout
+      tags:
+      - Rabbit
+  /rabbit/place_order:
+    get:
+      consumes:
+      - application/json
+      description: Cuando se consume place_order se genera la orden y se inicia el
+        proceso.
+      parameters:
+      - description: Consume place_order/order_place_order
+        in: body
+        name: place_order
+        required: true
+        schema:
+          $ref: '#/definitions/rbt.InputMessage-events_PlacedOrderData'
+      produces:
+      - application/json
+      responses: {}
+      summary: Mensage Rabbit place_order/order_place_order
+      tags:
+      - Rabbit
+swagger: "2.0"

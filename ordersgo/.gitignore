@@ -1,0 +1,8 @@
+.DS_Store
+.vscode
+pkg
+/vendor
+Gopkg.lock
+node_modules
+package-lock.json
+.history
