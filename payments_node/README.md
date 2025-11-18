@@ -1,162 +1,493 @@
-# Microservicio de Pagos
+# 💳 Microservicio de Pagos
 
-Microservicio encargado de gestionar los pagos del sistema de e-commerce.
-
-Se integra con el microservicio de Orders mediante RabbitMQ para procesar las órdenes que requieren pago.
+Microservicio completo para gestión de pagos en un sistema de e-commerce, con soporte para múltiples métodos de pago, pagos parciales, refunds automáticos y integración event-driven con otros microservicios.
 
 **Autor:** Bruno Lucero  
-**Repositorio:** [https://github.com/brunolucero19/microservicio-pagos](https://github.com/brunolucero19/microservicio-pagos)
+**Repositorio:** [https://github.com/brunolucero19/ecommerce-payments-orders](https://github.com/brunolucero19/ecommerce-payments-orders)  
+**Tecnologías:** Node.js 20.x, TypeScript 5.5, Express 4.19, MongoDB 8.2, RabbitMQ
 
-## Arquitectura
+---
 
-Este microservicio está desarrollado siguiendo los principios de **Domain-Driven Design (DDD)**:
+## 📋 Tabla de Contenidos
 
-- **Domain Layer**: Contiene las entidades del dominio y la lógica de negocio (Payment, Transaction)
-- **Infrastructure Layer**: Implementaciones de RabbitMQ, base de datos MongoDB y servicios externos
-- **Application Layer**: Casos de uso y orquestación de la lógica de negocio
-- **Presentation Layer**: API REST con Express
+- [Características Principales](#-características-principales)
+- [Arquitectura](#-arquitectura)
+- [Instalación](#-instalación)
+- [Configuración](#-configuración)
+- [Uso](#-uso)
+- [Testing](#-testing)
+- [Documentación API](#-documentación-api)
+- [Integración con Microservicios](#-integración-con-microservicios)
+- [Docker](#-docker)
 
-## Dependencias
+---
 
-### Node.js 20.x
+## ✨ Características Principales
 
-Seguir los pasos de instalación del sitio oficial [nodejs.org](https://nodejs.org/en/)
+### Métodos de Pago
 
-### MongoDB
+- 💳 **Tarjetas de Crédito/Débito**: Procesamiento inmediato con validación
+- 🏦 **Transferencia Bancaria**: Estado PENDING con confirmación automática (5s) o manual
+- 👛 **Wallet**: Sistema de billetera virtual con depósitos y retiros
 
-La base de datos se almacena en MongoDB.
+### Funcionalidades Avanzadas
 
-**Instalación:**
+- **Pagos Parciales**: Permite dividir un pago en múltiples transacciones
+  - Tracking de número de pago (1, 2, 3...)
+  - Cálculo automático de monto total pagado
+  - Estado `partially_paid` en órdenes
+- **Refunds Automáticos**: Cuando una orden se cancela, se reembolsan todos los pagos aprobados
+  - 3 reintentos con exponential backoff
+  - Refund automático a wallet
+  - Procesamiento manual para tarjetas
+- **Método Preferido**: Guarda el método de pago más usado por cada usuario
+- **Validación de Órdenes**: Integración HTTP con ordersgo para validar antes de crear pago
+- **Autenticación JWT**: Validación de tokens con cache en memoria
+- **Event-Driven Architecture**: Publica eventos a RabbitMQ para integración con otros servicios
 
-- **Windows/Mac**: Descargar desde [mongodb.com](https://www.mongodb.com/try/download/community)
-- **Linux**:
+### Estados de Pago
 
-```bash
-sudo apt-get install mongodb
+- `PENDING`: Pago creado, esperando confirmación
+- `APPROVED`: Pago exitoso
+- `REJECTED`: Pago rechazado (con código de error)
+- `REFUNDED`: Pago reembolsado
+
+---
+
+## 🏗 Arquitectura
+
+Desarrollado siguiendo **Domain-Driven Design (DDD)** y **Clean Architecture**:
+
+```
+src/
+├── domain/              # Lógica de Negocio (Capa de Dominio)
+│   ├── payment/         # Agregado Payment
+│   │   ├── payment.ts         # Entidad Payment (Mongoose Model)
+│   │   ├── service.ts         # Casos de uso de pago
+│   │   └── valueObjects/      # Card, BankTransfer, Wallet data
+│   ├── wallet/          # Agregado Wallet
+│   │   ├── wallet.ts          # Entidad Wallet
+│   │   └── service.ts         # Lógica de wallet
+│   ├── orders/          # Integración con Orders Service
+│   │   └── service.ts         # Validación de órdenes
+│   └── security/        # Tracking de métodos preferidos
+│       └── service.ts
+├── rabbit/              # Infraestructura - Mensajería
+│   ├── events/
+│   │   └── publishers.ts      # Publica: payment.success, payment.partial, etc.
+│   └── consumers/
+│       ├── logout.ts          # Consume: user.logout (invalida cache)
+│       └── orderCanceled.ts   # Consume: order.canceled (refund automático)
+├── rest/                # Capa de Presentación - API REST
+│   ├── payment/
+│   │   ├── controller.ts      # 7 endpoints de pagos
+│   │   └── routes.ts
+│   ├── wallet/
+│   │   ├── controller.ts      # 3 endpoints de wallet
+│   │   └── routes.ts
+│   └── middleware/
+│       └── auth.ts            # Validación JWT con cache
+├── server/              # Configuración del Servidor
+│   ├── express.ts             # Setup de Express (helmet, cors, compression)
+│   ├── swagger.ts             # Especificación OpenAPI 3.0
+│   ├── environment.ts         # Validación de variables de entorno
+│   └── database.ts            # Conexión a MongoDB
+└── server.ts            # Punto de entrada
 ```
 
-### RabbitMQ
+### Patrones Implementados
 
-Este microservicio consume eventos de órdenes desde RabbitMQ y publica eventos de pagos.
+- **Aggregate Roots**: Payment, Wallet
+- **Value Objects**: CardData, BankTransferData, WalletPaymentData
+- **Domain Services**: PaymentService, WalletService, OrdersService
+- **Repository Pattern**: Abstracción de persistencia con Mongoose
+- **Event Sourcing**: Integración via eventos de dominio
 
-**Instalación:**
+---
 
-- **Windows/Mac**: Descargar desde [rabbitmq.com](https://www.rabbitmq.com/download.html)
-- **Linux**:
+## 🚀 Instalación
+
+### Prerequisitos
+
+- **Node.js 20.x**: [Descargar](https://nodejs.org/)
+- **MongoDB 8.2+**: Puerto 27018 (ver [DOCKER.md](DOCKER.md))
+- **RabbitMQ**: [Descargar](https://www.rabbitmq.com/download.html)
+- **Auth Service** (opcional): Para validación de tokens JWT - `http://localhost:3000`
+- **Orders Service** (opcional): Para validación de órdenes - `http://localhost:3004`
+
+### Instalar Dependencias
 
 ```bash
-sudo apt-get install rabbitmq-server
+cd payments_node
+npm install
 ```
 
-## Configuración
+---
 
-Crear un archivo `.env` en la raíz del proyecto (usar `.env.example` como plantilla):
+## ⚙️ Configuración
+
+### 1. Variables de Entorno
+
+Copiar `.env.example` y crear `.env`:
 
 ```bash
 cp .env.example .env
 ```
 
-Editar `.env` con los valores correspondientes. Ver `.env.example` para detalles.
+Editar `.env` con tus valores:
 
-## Instalación y Ejecución
+```env
+# Servidor
+NODE_ENV=development
+PORT=3005
+
+# MongoDB (puerto 27018 para evitar conflictos con otros microservicios)
+MONGODB_URI=mongodb://localhost:27018/payments
+
+# RabbitMQ
+RABBITMQ_URL=amqp://localhost
+
+# JWT (debe coincidir con Auth Service)
+JWT_SECRET=your-secret-key-here
+
+# Servicios externos
+AUTH_SERVICE_URL=http://localhost:3000
+ORDERS_SERVICE_URL=http://localhost:3004
+
+# Logs
+LOG_LEVEL=info
+```
+
+### 2. Validación de Configuración
+
+El sistema valida automáticamente las variables al iniciar:
+
+- ✓ Puerto en rango válido (1-65535)
+- ✓ URLs de MongoDB y RabbitMQ con formato correcto
+- ✓ JWT secret con longitud mínima de 32 caracteres
+- ✓ URLs de servicios externos válidas
+
+Ver `src/server/environment.ts` para más detalles.
+
+---
+
+## 💻 Uso
 
 ### Opción 1: Docker Compose (Recomendado)
 
-Levanta MongoDB y el microservicio en contenedores:
+Levanta MongoDB (puerto 27018) y el microservicio de pagos:
 
 ```bash
-# Levantar todos los servicios
+# Iniciar todos los servicios
 docker-compose up -d
 
 # Ver logs
-docker-compose logs -f
+docker-compose logs -f payments
 
 # Detener
 docker-compose down
 ```
 
-Accede a:
+Servicios disponibles:
 
-- API: http://localhost:3005
-- Swagger: http://localhost:3005/api-docs
+- **API**: http://localhost:3005
+- **Swagger UI**: http://localhost:3005/api-docs
+- **MongoDB**: localhost:27018
 
-Ver [DOCKER.md](DOCKER.md) para más detalles.
+Ver [DOCKER.md](DOCKER.md) para configuración avanzada.
 
 ### Opción 2: Desarrollo Local
 
-Levanta solo MongoDB con Docker y ejecuta el microservicio con Node.js:
+Solo MongoDB en Docker, microservicio en Node.js:
 
 ```bash
-# 1. Levantar MongoDB
+# 1. Levantar solo MongoDB
 docker-compose up -d mongo
 
-# 2. Instalar dependencias
-npm install
-
-# 3. Ejecutar en modo desarrollo
+# 2. Ejecutar en modo desarrollo (con watch)
 npm start
 
-# O en modo producción
+# O compilar y ejecutar en producción
 npm run build
 npm run serve
 ```
 
-**Nota:** Los demás microservicios usan MongoDB 6.0 en puerto 27017. RabbitMQ se levanta por separado.
-
-## Testing
+### Scripts Disponibles
 
 ```bash
-npm test
+npm start          # Build + watch mode (desarrollo)
+npm run build      # Compilar TypeScript
+npm run serve      # Ejecutar código compilado
+npm test           # Ejecutar tests con cobertura
+npm run tslint     # Verificar código con TSLint
 ```
 
-## Documentación API
+---
 
-La documentación de la API se puede consultar en:
+## 🧪 Testing
 
-- [README-API.md](./README-API.md) - Documentación en Markdown
-- [http://localhost:3005](http://localhost:3005) - Documentación web (cuando el servidor está ejecutándose)
+### Tests Unitarios
 
-## Docker
+```bash
+# Ejecutar todos los tests
+npm test
+
+# Tests sin cobertura
+npm test -- --no-coverage
+
+# Tests en modo watch
+npm test -- --watch
+
+# Tests específicos
+npm test -- --testPathPattern="payment"
+```
+
+### Cobertura Actual
+
+- **Payment Model**: 78.78% statements, 85.71% branches
+- **Tests pasando**: 5/5 ✅
+
+Ver [TESTING.md](TESTING.md) para:
+
+- 9 casos de uso detallados para testing manual
+- Ejemplos de requests con curl/Postman
+- Validaciones por caso de uso
+- Guía de debugging
+
+### Testing Manual - Casos de Uso
+
+1. **Pago Exitoso** (Credit Card)
+2. **Pago Parcial** (Múltiples transacciones)
+3. **Pago Fallido** (Validación de errores)
+4. **Transferencia Bancaria** (Confirmación automática)
+5. **Orden Cancelada** (Refund automático)
+6. **Wallet** (Depósito, retiro, refund)
+7. **Método Preferido** (Tracking automático)
+8. **Historial** (Paginación)
+9. **Aprobación Manual** (Transferencias pendientes)
+
+---
+
+## 📚 Documentación API
+
+### Swagger UI (Interactivo)
+
+```
+http://localhost:3005/api-docs
+```
+
+Documentación OpenAPI 3.0 completa con:
+
+- Esquemas de datos
+- Ejemplos de requests/responses
+- Códigos de error
+- Try it out interactivo
+
+### Markdown
+
+- [README-API.md](./README-API.md) - Documentación detallada de endpoints
+- [DOCUMENTACION.md](./DOCUMENTACION.md) - Especificación de casos de uso
+
+### Endpoints Principales
+
+#### Pagos
+
+```http
+POST   /api/payments              # Crear pago
+GET    /api/payments/:id          # Obtener pago por ID
+GET    /api/payments/order/:orderId  # Pagos de una orden
+GET    /api/payments/history      # Historial con paginación
+GET    /api/payments/preferred/:userId  # Método preferido
+PUT    /api/payments/:id/approve  # Aprobación manual
+POST   /api/payments/:id/refund   # Reembolso
+```
+
+#### Wallet
+
+```http
+POST   /api/wallet/deposit        # Depositar fondos
+GET    /api/wallet/balance        # Consultar saldo
+POST   /api/wallet/refund         # Reembolso a wallet
+```
+
+Todos los endpoints requieren header:
+
+```
+Authorization: Bearer <JWT_TOKEN>
+```
+
+---
+
+## 🔗 Integración con Microservicios
+
+### Eventos Publicados (RabbitMQ)
+
+Exchange: `payments_exchange` (topic)
+
+| Routing Key        | Payload                | Descripción           |
+| ------------------ | ---------------------- | --------------------- |
+| `payment.success`  | PaymentSuccessMessage  | Pago completo exitoso |
+| `payment.partial`  | PaymentPartialMessage  | Pago parcial exitoso  |
+| `payment.failed`   | PaymentFailedMessage   | Pago rechazado        |
+| `payment.refunded` | PaymentRefundedMessage | Pago reembolsado      |
+
+### Eventos Consumidos
+
+| Exchange               | Routing Key      | Acción                                    |
+| ---------------------- | ---------------- | ----------------------------------------- |
+| `auth` (fanout)        | -                | `user.logout`: Invalida token en cache    |
+| `order_events` (topic) | `order.canceled` | Reembolsa automáticamente pagos aprobados |
+
+### Integración HTTP
+
+- **Auth Service** (`GET /api/auth/validate`): Valida tokens JWT
+- **Orders Service** (`GET /api/orders/:orderId`): Valida orden antes de crear pago
+
+### Integración con ordersgo
+
+El microservicio ordersgo (Go) consume los eventos de pagos:
+
+```go
+// ordersgo escucha en:
+- payment.success  → Actualiza Order status a "paid"
+- payment.partial  → Actualiza Order status a "partially_paid"
+- payment.failed   → Registra intento fallido
+- payment.refunded → Revierte Order status si es necesario
+```
+
+Ver `/ordersgo/internal/rabbit/` para implementación de consumers.
+
+---
+
+## 🐳 Docker
+
+### Imágenes
+
+- **Desarrollo**: `Dockerfile` - Multi-stage con watch mode
+- **Producción**: `Dockerfile.prod` - Imagen optimizada
 
 ### Build
 
 ```bash
-docker build -t payments-node .
+# Desarrollo
+docker build -t payments-node:dev .
+
+# Producción
+docker build -f Dockerfile.prod -t payments-node:prod .
 ```
 
-### Run
+### Run Individual
 
 ```bash
-docker run -it --name payments-node -p 3005:3005 payments-node
+docker run -d \
+  --name payments-node \
+  -p 3005:3005 \
+  -e MONGODB_URI=mongodb://host.docker.internal:27018/payments \
+  -e RABBITMQ_URL=amqp://host.docker.internal \
+  -e JWT_SECRET=your-secret \
+  payments-node:dev
 ```
 
-## Estructura del Proyecto
+### Docker Compose
+
+Ver [DOCKER.md](DOCKER.md) para configuración completa.
+
+---
+
+## 📂 Estructura del Proyecto
 
 ```
 payments_node/
 ├── src/
-│   ├── domain/           # Entidades y lógica de dominio
-│   │   └── payment/      # Agregado de Payment
-│   ├── rabbit/           # Configuración y consumidores de RabbitMQ
-│   ├── rest/             # Controllers y rutas REST
-│   ├── server/           # Configuración del servidor Express
-│   └── server.ts         # Punto de entrada
-├── test/                 # Tests unitarios y de integración
-└── dist/                 # Código compilado
+│   ├── domain/              # Lógica de negocio (DDD)
+│   │   ├── payment/         # Agregado Payment
+│   │   ├── wallet/          # Agregado Wallet
+│   │   ├── orders/          # Cliente HTTP Orders
+│   │   └── security/        # Métodos preferidos
+│   ├── rabbit/              # Event-driven integration
+│   │   ├── events/          # Publishers
+│   │   └── consumers/       # Consumers (logout, orderCanceled)
+│   ├── rest/                # API REST
+│   │   ├── payment/         # Payment controller
+│   │   ├── wallet/          # Wallet controller
+│   │   └── middleware/      # Auth middleware
+│   ├── server/              # Configuración
+│   │   ├── express.ts
+│   │   ├── swagger.ts       # OpenAPI spec
+│   │   ├── environment.ts   # Validación .env
+│   │   └── database.ts
+│   └── server.ts            # Entry point
+├── test/                    # Tests (Jest + TypeScript)
+│   ├── domain/
+│   ├── rabbit/
+│   └── rest/
+├── coverage/                # Reportes de cobertura
+├── dist/                    # Código compilado
+├── .env.example             # Plantilla de configuración
+├── docker-compose.yml       # Orquestación Docker
+├── Dockerfile               # Imagen desarrollo
+├── Dockerfile.prod          # Imagen producción
+├── jest.config.js           # Configuración Jest
+├── tsconfig.json            # Configuración TypeScript
+├── tslint.json              # Reglas de linting
+├── README.md                # Este archivo
+├── README-API.md            # Documentación API detallada
+├── DOCUMENTACION.md         # Especificación casos de uso
+├── TESTING.md               # Guía de testing
+└── DOCKER.md                # Guía Docker detallada
 ```
 
-## Integración con otros microservicios
+---
 
-### Orders (ordersgo)
+## 🔍 Troubleshooting
 
-- **Consume**: `order-placed` - Cuando se crea una nueva orden
-- **Publica**: `payment-processed` - Cuando se procesa un pago exitosamente
-- **Publica**: `payment-failed` - Cuando falla un pago
+### Puerto 27018 en uso
 
-### Auth (ecommerce_auth_node)
+```bash
+# Ver qué usa el puerto
+netstat -ano | findstr :27018
 
-- Valida tokens JWT para autenticación de usuarios en las peticiones HTTP
+# Cambiar puerto en .env y docker-compose.yml
+```
 
-## Licencia
+### RabbitMQ no conecta
+
+```bash
+# Verificar que RabbitMQ esté corriendo
+rabbitmqctl status
+
+# Ver logs
+docker-compose logs rabbitmq
+```
+
+### Errores de autenticación
+
+```bash
+# Verificar JWT_SECRET en .env
+# Debe coincidir con Auth Service
+```
+
+### MongoDB no conecta
+
+```bash
+# Verificar MongoDB
+docker-compose ps mongo
+
+# Ver logs
+docker-compose logs mongo
+```
+
+---
+
+## 📝 Licencia
 
 MIT
+
+---
+
+## 👤 Autor
+
+**Bruno Lucero**  
+GitHub: [@brunolucero19](https://github.com/brunolucero19)
+
+---
