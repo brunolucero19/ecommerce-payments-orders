@@ -18,7 +18,7 @@ func CreatePayment(ctx context.Context, orderID string, payment *model.PaymentEv
 
 	_, err = env.Service().ProcessSavePayment(&events.PaymentEvent{
 		OrderId: orderID,
-		Method:  events.PaymentMethod(payment.Method),
+		Method:  string(payment.Method),
 		Amount:  float32(payment.Amount),
 	})
 	if err != nil {

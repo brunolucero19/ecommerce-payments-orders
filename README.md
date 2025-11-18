@@ -167,8 +167,8 @@ go run main.go  # Puerto 3002
 ```bash
 cd ordersgo
 
-# Build de la imagen
-docker build -t ordersgo .
+# Build de la imagen (IMPORTANTE: usar Dockerfile.local con código actualizado)
+docker build -f Dockerfile.local -t ordersgo .
 
 # Ejecutar el contenedor
 docker run -d --name ordersgo \
@@ -182,6 +182,7 @@ docker run -d --name ordersgo \
 **En Windows CMD usa:**
 
 ```cmd
+docker build -f Dockerfile.local -t ordersgo .
 docker run -d --name ordersgo -p 3004:3004 ^
   -e MONGO_URL=mongodb://host.docker.internal:27017 ^
   -e RABBIT_URL=amqp://host.docker.internal ^
@@ -198,20 +199,26 @@ go run main.go  # Puerto 3004
 
 #### 3.5. Payments Service
 
-**Opción A: Docker Compose** (recomendado para payments_node)
+**Opción A: Docker** (recomendado si no tienes Node.js)
 
 ```bash
 cd payments_node
-docker-compose up -d  # Levanta MongoDB + Payments
+docker build -t payments_node .
+docker run -d --name payments_node -p 3005:3005 \
+  -e MONGO_URL=mongodb://host.docker.internal:27018 \
+  -e RABBIT_URL=amqp://host.docker.internal \
+  -e AUTH_SERVICE_URL=http://host.docker.internal:3000 \
+  -e ORDERS_SERVICE_URL=http://host.docker.internal:3004 \
+  payments_node
 ```
 
-**Opción B: Desarrollo Local**
+**Opción B: Desarrollo Local con npm**
 
 ```bash
 cd payments_node
 
-# Levantar solo MongoDB
-docker-compose up -d mongo
+# Asegurarse que MongoDB esté corriendo en puerto 27018
+# docker run -d --name mongo_payments -p 27018:27017 mongo:8.2
 
 # Instalar y ejecutar
 npm install
@@ -269,9 +276,9 @@ cd ..\cartgo
 docker build -t cartgo .
 docker run -d --name cartgo -p 3002:3002 cartgo
 
-REM Orders Service
+REM Orders Service (IMPORTANTE: usar Dockerfile.local)
 cd ..\ecommerce-payments-orders\ordersgo
-docker build -t ordersgo .
+docker build -f Dockerfile.local -t ordersgo .
 docker run -d --name ordersgo -p 3004:3004 ^
   -e MONGO_URL=mongodb://host.docker.internal:27017 ^
   -e RABBIT_URL=amqp://host.docker.internal ^
@@ -280,7 +287,13 @@ docker run -d --name ordersgo -p 3004:3004 ^
 
 REM Payments Service
 cd ..\payments_node
-docker-compose up -d
+docker build -t payments_node .
+docker run -d --name payments_node -p 3005:3005 ^
+  -e MONGO_URL=mongodb://host.docker.internal:27018 ^
+  -e RABBIT_URL=amqp://host.docker.internal ^
+  -e AUTH_SERVICE_URL=http://host.docker.internal:3000 ^
+  -e ORDERS_SERVICE_URL=http://host.docker.internal:3004 ^
+  payments_node
 ```
 
 ### 3. Verificar
@@ -299,9 +312,7 @@ docker logs -f ordersgo
 ### 5. Detener todo
 
 ```cmd
-docker stop authgo cataloggo cartgo ordersgo
-cd payments_node
-docker-compose down
+docker stop authgo cataloggo cartgo ordersgo payments_node
 docker stop rabbitmq mongo_orders mongo_payments
 ```
 
@@ -515,14 +526,22 @@ go test ./...
 ```bash
 cd payments_node
 
-# Levantar con Docker Compose
-docker-compose up -d
+# Build imagen
+docker build -t payments_node .
+
+# Run contenedor
+docker run -d --name payments_node -p 3005:3005 \
+  -e MONGO_URL=mongodb://host.docker.internal:27018 \
+  -e RABBIT_URL=amqp://host.docker.internal \
+  -e AUTH_SERVICE_URL=http://host.docker.internal:3000 \
+  -e ORDERS_SERVICE_URL=http://host.docker.internal:3004 \
+  payments_node
 
 # Ver logs
-docker-compose logs -f payments
+docker logs -f payments_node
 
 # Detener
-docker-compose down
+docker stop payments_node && docker rm payments_node
 ```
 
 ### Orders Go
@@ -530,8 +549,8 @@ docker-compose down
 ```bash
 cd ordersgo
 
-# Build
-docker build -t ordersgo .
+# Build (con código local actualizado)
+docker build -f Dockerfile.local -t ordersgo .
 
 # Run
 docker run -p 3004:3004 \

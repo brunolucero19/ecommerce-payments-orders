@@ -173,19 +173,28 @@ Ver `src/server/environment.ts` para más detalles.
 
 ## 💻 Uso
 
-### Opción 1: Docker Compose (Recomendado)
+### Opción 1: Docker (Recomendado para producción)
 
-Levanta MongoDB (puerto 27018) y el microservicio de pagos:
+Levanta el microservicio de pagos en Docker:
 
 ```bash
-# Iniciar todos los servicios
-docker-compose up -d
+# 1. Asegurarse que MongoDB esté corriendo
+docker run -d --name mongo_payments -p 27018:27017 mongo:8.2
+
+# 2. Build y ejecutar payments
+docker build -t payments_node .
+docker run -d --name payments_node -p 3005:3005 \
+  -e MONGO_URL=mongodb://host.docker.internal:27018 \
+  -e RABBIT_URL=amqp://host.docker.internal \
+  -e AUTH_SERVICE_URL=http://host.docker.internal:3000 \
+  -e ORDERS_SERVICE_URL=http://host.docker.internal:3004 \
+  payments_node
 
 # Ver logs
-docker-compose logs -f payments
+docker logs -f payments_node
 
 # Detener
-docker-compose down
+docker stop payments_node && docker rm payments_node
 ```
 
 Servicios disponibles:
@@ -194,15 +203,13 @@ Servicios disponibles:
 - **Swagger UI**: http://localhost:3005/api-docs
 - **MongoDB**: localhost:27018
 
-Ver [DOCKER.md](DOCKER.md) para configuración avanzada.
+### Opción 2: Desarrollo Local con npm
 
-### Opción 2: Desarrollo Local
-
-Solo MongoDB en Docker, microservicio en Node.js:
+MongoDB en Docker, microservicio en Node.js:
 
 ```bash
-# 1. Levantar solo MongoDB
-docker-compose up -d mongo
+# 1. Levantar MongoDB
+docker run -d --name mongo_payments -p 27018:27017 mongo:8.2
 
 # 2. Ejecutar en modo desarrollo (con watch)
 npm start
@@ -424,7 +431,7 @@ payments_node/
 ├── coverage/                # Reportes de cobertura
 ├── dist/                    # Código compilado
 ├── .env.example             # Plantilla de configuración
-├── docker-compose.yml       # Orquestación Docker
+├── Dockerfile               # Imagen Docker multi-stage
 ├── Dockerfile               # Imagen desarrollo
 ├── Dockerfile.prod          # Imagen producción
 ├── jest.config.js           # Configuración Jest
@@ -447,7 +454,7 @@ payments_node/
 # Ver qué usa el puerto
 netstat -ano | findstr :27018
 
-# Cambiar puerto en .env y docker-compose.yml
+# Cambiar puerto en .env y variable de entorno SERVER_PORT
 ```
 
 ### RabbitMQ no conecta
@@ -457,7 +464,7 @@ netstat -ano | findstr :27018
 rabbitmqctl status
 
 # Ver logs
-docker-compose logs rabbitmq
+docker logs rabbitmq
 ```
 
 ### Errores de autenticación

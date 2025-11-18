@@ -20,7 +20,9 @@ import (
 //
 // Validar Artículos
 func listenPlaceOrder(logger log.LogRusEntry) {
+	logger.Info("Iniciando consumer de place_order...")
 	for {
+		logger.Info("Intentando conectar a RabbitMQ para place_order...")
 		err := rbt.ConsumeRabbitEvent[events.PlacedOrderData](
 			env.Get().FluentURL,
 			env.Get().RabbitURL,
@@ -35,7 +37,7 @@ func listenPlaceOrder(logger log.LogRusEntry) {
 		if err != nil {
 			logger.Error(err)
 		}
-		logger.Info("RabbitMQ listenLogout conectando en 5 segundos.")
+		logger.Info("RabbitMQ place_order reconectando en 5 segundos.")
 		time.Sleep(5 * time.Second)
 	}
 }

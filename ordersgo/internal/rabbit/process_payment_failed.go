@@ -1,15 +1,13 @@
 package rabbit
 
 import (
-	"encoding/json"
+	"time"
 
 	"github.com/nmarsollier/commongo/log"
 	"github.com/nmarsollier/commongo/rbt"
 	"github.com/nmarsollier/ordersgo/internal/di"
+	"github.com/nmarsollier/ordersgo/internal/env"
 	"github.com/nmarsollier/ordersgo/internal/events"
-	"github.com/nmarsollier/ordersgo/internal/projections"
-	"github.com/nmarsollier/ordersgo/internal/services"
-	"github.com/streadway/amqp"
 )
 
 // PaymentFailedMessage estructura del mensaje de pago fallido
@@ -25,97 +23,28 @@ type PaymentFailedMessage struct {
 }
 
 func listenPaymentFailed(logger log.LogRusEntry) {
-	logger.Info("Payment Failed Consumer starting...")
+	for {
+		err := rbt.ConsumeRabbitEvent[PaymentFailedMessage](
+			env.Get().FluentURL,
+			env.Get().RabbitURL,
+			env.Get().ServerName,
+			"payments_exchange",
+			"topic",
+			"orders_payment_failed",
+			"payment.failed",
+			processPaymentFailed,
+		)
 
-	conn, err := rbt.Get(di.NewInjector(nil))
-	if err != nil {
-		logger.Error(err)
-		return
-	}
-
-	channel, err := conn.Channel()
-	if err != nil {
-		logger.Error(err)
-		return
-	}
-	defer channel.Close()
-
-	err = channel.ExchangeDeclare(
-		"payments_exchange", // name
-		"topic",             // type
-		true,                // durable
-		false,               // auto-deleted
-		false,               // internal
-		false,               // no-wait
-		nil,                 // arguments
-	)
-	if err != nil {
-		logger.Error(err)
-		return
-	}
-
-	queue, err := channel.QueueDeclare(
-		"orders_payment_failed", // name
-		true,                     // durable
-		false,                    // delete when unused
-		false,                    // exclusive
-		false,                    // no-wait
-		nil,                      // arguments
-	)
-	if err != nil {
-		logger.Error(err)
-		return
-	}
-
-	err = channel.QueueBind(
-		queue.Name,          // queue name
-		"payment.failed",    // routing key
-		"payments_exchange", // exchange
-		false,
-		nil,
-	)
-	if err != nil {
-		logger.Error(err)
-		return
-	}
-
-	messages, err := channel.Consume(
-		queue.Name, // queue
-		"",         // consumer
-		false,      // auto-ack
-		false,      // exclusive
-		false,      // no-local
-		false,      // no-wait
-		nil,        // args
-	)
-	if err != nil {
-		logger.Error(err)
-		return
-	}
-
-	logger.Info("Payment Failed Consumer started successfully")
-
-	go func() {
-		for d := range messages {
-			logger.Info("Payment Failed message received")
-
-			if err := processPaymentFailed(d, logger); err != nil {
-				logger.Error(err)
-				d.Nack(false, true) // Nack with requeue
-			} else {
-				d.Ack(false)
-			}
+		if err != nil {
+			logger.Error(err)
 		}
-	}()
+		logger.Info("RabbitMQ listenPaymentFailed conectando en 5 segundos.")
+		time.Sleep(5 * time.Second)
+	}
 }
 
-func processPaymentFailed(d amqp.Delivery, logger log.LogRusEntry) error {
-	// Parse message
-	var message PaymentFailedMessage
-	if err := json.Unmarshal(d.Body, &message); err != nil {
-		logger.Error("Error parsing payment.failed message: ", err)
-		return err
-	}
+func processPaymentFailed(logger log.LogRusEntry, newMessage *rbt.InputMessage[PaymentFailedMessage]) {
+	message := newMessage.Message
 
 	logger.WithField("orderId", message.OrderID).
 		WithField("paymentId", message.PaymentID).
@@ -137,16 +66,14 @@ func processPaymentFailed(d amqp.Delivery, logger log.LogRusEntry) error {
 	}
 
 	// Save event and update projection
-	service := services.NewService(logger, events.NewEventService(logger), projections.NewProjectionsService(logger), nil, nil)
-	if _, err := service.ProcessSavePayment(paymentEvent); err != nil {
+	deps := di.NewInjector(logger)
+	if _, err := deps.Service().ProcessSavePayment(paymentEvent); err != nil {
 		logger.Error("Error saving payment event: ", err)
-		return err
+		return
 	}
 
 	logger.WithField("orderId", message.OrderID).
 		WithField("paymentId", message.PaymentID).
 		WithField("errorCode", message.ErrorCode).
 		Info("Failed payment processed successfully")
-
-	return nil
 }

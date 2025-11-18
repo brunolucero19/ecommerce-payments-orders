@@ -1,15 +1,13 @@
 package rabbit
 
 import (
-	"encoding/json"
+	"time"
 
 	"github.com/nmarsollier/commongo/log"
 	"github.com/nmarsollier/commongo/rbt"
 	"github.com/nmarsollier/ordersgo/internal/di"
+	"github.com/nmarsollier/ordersgo/internal/env"
 	"github.com/nmarsollier/ordersgo/internal/events"
-	"github.com/nmarsollier/ordersgo/internal/projections"
-	"github.com/nmarsollier/ordersgo/internal/services"
-	"github.com/streadway/amqp"
 )
 
 // PaymentPartialMessage estructura del mensaje de pago parcial
@@ -28,97 +26,28 @@ type PaymentPartialMessage struct {
 }
 
 func listenPaymentPartial(logger log.LogRusEntry) {
-	logger.Info("Payment Partial Consumer starting...")
+	for {
+		err := rbt.ConsumeRabbitEvent[PaymentPartialMessage](
+			env.Get().FluentURL,
+			env.Get().RabbitURL,
+			env.Get().ServerName,
+			"payments_exchange",
+			"topic",
+			"orders_payment_partial",
+			"payment.partial",
+			processPaymentPartial,
+		)
 
-	conn, err := rbt.Get(di.NewInjector(nil))
-	if err != nil {
-		logger.Error(err)
-		return
-	}
-
-	channel, err := conn.Channel()
-	if err != nil {
-		logger.Error(err)
-		return
-	}
-	defer channel.Close()
-
-	err = channel.ExchangeDeclare(
-		"payments_exchange", // name
-		"topic",             // type
-		true,                // durable
-		false,               // auto-deleted
-		false,               // internal
-		false,               // no-wait
-		nil,                 // arguments
-	)
-	if err != nil {
-		logger.Error(err)
-		return
-	}
-
-	queue, err := channel.QueueDeclare(
-		"orders_payment_partial", // name
-		true,                      // durable
-		false,                     // delete when unused
-		false,                     // exclusive
-		false,                     // no-wait
-		nil,                       // arguments
-	)
-	if err != nil {
-		logger.Error(err)
-		return
-	}
-
-	err = channel.QueueBind(
-		queue.Name,          // queue name
-		"payment.partial",   // routing key
-		"payments_exchange", // exchange
-		false,
-		nil,
-	)
-	if err != nil {
-		logger.Error(err)
-		return
-	}
-
-	messages, err := channel.Consume(
-		queue.Name, // queue
-		"",         // consumer
-		false,      // auto-ack
-		false,      // exclusive
-		false,      // no-local
-		false,      // no-wait
-		nil,        // args
-	)
-	if err != nil {
-		logger.Error(err)
-		return
-	}
-
-	logger.Info("Payment Partial Consumer started successfully")
-
-	go func() {
-		for d := range messages {
-			logger.Info("Payment Partial message received")
-
-			if err := processPaymentPartial(d, logger); err != nil {
-				logger.Error(err)
-				d.Nack(false, true) // Nack with requeue
-			} else {
-				d.Ack(false)
-			}
+		if err != nil {
+			logger.Error(err)
 		}
-	}()
+		logger.Info("RabbitMQ listenPaymentPartial conectando en 5 segundos.")
+		time.Sleep(5 * time.Second)
+	}
 }
 
-func processPaymentPartial(d amqp.Delivery, logger log.LogRusEntry) error {
-	// Parse message
-	var message PaymentPartialMessage
-	if err := json.Unmarshal(d.Body, &message); err != nil {
-		logger.Error("Error parsing payment.partial message: ", err)
-		return err
-	}
+func processPaymentPartial(logger log.LogRusEntry, newMessage *rbt.InputMessage[PaymentPartialMessage]) {
+	message := newMessage.Message
 
 	logger.WithField("orderId", message.OrderID).
 		WithField("paymentId", message.PaymentID).
@@ -139,16 +68,14 @@ func processPaymentPartial(d amqp.Delivery, logger log.LogRusEntry) error {
 	}
 
 	// Save event and update projection
-	service := services.NewService(logger, events.NewEventService(logger), projections.NewProjectionsService(logger), nil, nil)
-	if _, err := service.ProcessSavePayment(paymentEvent); err != nil {
+	deps := di.NewInjector(logger)
+	if _, err := deps.Service().ProcessSavePayment(paymentEvent); err != nil {
 		logger.Error("Error saving payment event: ", err)
-		return err
+		return
 	}
 
 	logger.WithField("orderId", message.OrderID).
 		WithField("paymentNumber", message.PaymentNumber).
 		WithField("totalPaidSoFar", message.TotalPaidSoFar).
 		Info("Partial payment processed successfully")
-
-	return nil
 }

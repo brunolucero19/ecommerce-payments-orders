@@ -9,6 +9,8 @@ func Init(deps di.Injector) {
 	logger := deps.Logger().
 		WithField(log.LOG_FIELD_CONTROLLER, "Rabbit").
 		WithField(log.LOG_FIELD_RABBIT_ACTION, "Init")
+	
+	logger.Info("Iniciando consumers de RabbitMQ...")
 	go listenArticleExist(logger)
 
 	go listenLogout(logger)

@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/nmarsollier/ordersgo/internal/events"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

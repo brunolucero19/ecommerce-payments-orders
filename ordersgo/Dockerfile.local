@@ -1,0 +1,29 @@
+# Dockerfile para ordersgo - Código local actualizado
+FROM golang:1.22.6-bullseye
+
+# Directorio de trabajo
+WORKDIR /app
+
+# Copiar archivos de configuración de Go
+COPY go.mod go.sum ./
+
+# Descargar dependencias
+RUN go mod download
+
+# Copiar todo el código fuente LOCAL
+COPY . .
+
+# Compilar la aplicación
+RUN go build -o ordersgo .
+
+# Variables de entorno por defecto
+ENV MONGO_URL=mongodb://host.docker.internal:27017
+ENV RABBIT_URL=amqp://host.docker.internal
+ENV AUTH_SERVICE_URL=http://host.docker.internal:3000
+ENV FLUENT_URL=host.docker.internal:24224
+
+# Puerto
+EXPOSE 3004
+
+# Ejecutar la aplicación compilada
+CMD ["./ordersgo"]

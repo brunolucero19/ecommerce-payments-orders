@@ -103,8 +103,8 @@ async function consumeFanoutQueue(
   try {
     const channel = await RabbitClient.getChannel()
 
-    // Declarar exchange tipo fanout
-    await channel.assertExchange(exchange, exchangeType, { durable: true })
+    // Declarar exchange tipo fanout (durable: false para coincidir con authgo)
+    await channel.assertExchange(exchange, exchangeType, { durable: false })
 
     // Declarar cola (única para este servicio)
     await channel.assertQueue(queue, { durable: true })
