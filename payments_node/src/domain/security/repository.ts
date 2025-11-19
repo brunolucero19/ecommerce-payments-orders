@@ -42,7 +42,7 @@ export class SecurityRepository {
   async validateToken(token: string): Promise<User> {
     try {
       const response = await axios.get<AuthUserResponse>(
-        `${this.authServiceUrl}/v1/users/current`,
+        `${this.authServiceUrl}/users/current`,
         {
           headers: {
             Authorization: token, // Token ya incluye "Bearer "
