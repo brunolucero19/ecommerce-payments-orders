@@ -7,7 +7,7 @@ import { User } from './user'
  * Interfaz de respuesta de authgo
  */
 interface AuthUserResponse {
-  _id: string
+  id: string
   name: string
   login: string
 }
@@ -53,7 +53,7 @@ export class SecurityRepository {
 
       // Mapear respuesta de authgo a nuestra interface User
       return {
-        id: response.data._id,
+        id: response.data.id,
         name: response.data.name,
         login: response.data.login,
       }

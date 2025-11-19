@@ -43,6 +43,38 @@ export class OrdersService {
       console.log(
         `[OrdersService] Orden ${orderId} validada exitosamente. Status: ${response.data.status}`
       )
+      console.log(
+        '[OrdersService] Datos de la orden:',
+        JSON.stringify(response.data, null, 2)
+      )
+
+      // Calcular totalPrice si no viene en la respuesta
+      if (!response.data.totalPrice && response.data.articles) {
+        response.data.totalPrice = response.data.articles.reduce(
+          (total, article) => total + article.unitaryPrice * article.quantity,
+          0
+        )
+        console.log(
+          `[OrdersService] totalPrice calculado: ${response.data.totalPrice}`
+        )
+      }
+
+      // Calcular totalPayment si no viene en la respuesta
+      if (response.data.totalPayment === undefined && response.data.payments) {
+        response.data.totalPayment = Array.isArray(response.data.payments)
+          ? response.data.payments.reduce(
+              (total, payment) => total + payment.amount,
+              0
+            )
+          : 0
+        console.log(
+          `[OrdersService] totalPayment calculado: ${response.data.totalPayment}`
+        )
+      } else if (response.data.totalPayment === undefined) {
+        response.data.totalPayment = 0
+        console.log('[OrdersService] totalPayment inicializado en 0')
+      }
+
       return response.data
     } catch (error: any) {
       // Verificar si es un error de axios

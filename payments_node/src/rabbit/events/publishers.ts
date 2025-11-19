@@ -26,21 +26,27 @@ export const PaymentEvents = {
  */
 export async function publishPaymentSuccess(payment: IPayment): Promise<void> {
   try {
-    const message = {
-      paymentId: payment.id,
-      orderId: payment.orderId,
-      userId: payment.userId,
-      amount: payment.amount,
-      currency: payment.currency,
-      method: payment.method,
-      transactionId: payment.transactionId,
-      timestamp: new Date().toISOString(),
+    // Estructura que espera commongo/rbt.ConsumeRabbitEvent
+    const envelope = {
+      message: {
+        paymentId: payment.id,
+        orderId: payment.orderId,
+        userId: payment.userId,
+        amount: payment.amount,
+        currency: payment.currency,
+        method: payment.method,
+        transactionId: payment.transactionId,
+        timestamp: new Date().toISOString(),
+      },
+      correlation_id: '', // Se puede agregar un ID único si es necesario
+      exchange: EXCHANGE_NAME,
+      routing_key: PaymentEvents.PAYMENT_SUCCESS,
     }
 
     await RabbitClient.publishEvent(
       EXCHANGE_NAME,
       PaymentEvents.PAYMENT_SUCCESS,
-      message
+      envelope
     )
 
     console.log(
@@ -66,25 +72,30 @@ export async function publishPaymentSuccess(payment: IPayment): Promise<void> {
  */
 export async function publishPaymentPartial(payment: IPayment): Promise<void> {
   try {
-    const message = {
-      paymentId: payment.id,
-      orderId: payment.orderId,
-      userId: payment.userId,
-      amount: payment.amount,
-      currency: payment.currency,
-      method: payment.method,
-      transactionId: payment.transactionId,
-      paymentNumber: payment.paymentNumber,
-      totalOrderAmount: payment.totalOrderAmount,
-      totalPaidSoFar: payment.totalPaidSoFar,
-      remainingAmount: payment.totalOrderAmount - payment.totalPaidSoFar,
-      timestamp: new Date().toISOString(),
+    const envelope = {
+      message: {
+        paymentId: payment.id,
+        orderId: payment.orderId,
+        userId: payment.userId,
+        amount: payment.amount,
+        currency: payment.currency,
+        method: payment.method,
+        transactionId: payment.transactionId,
+        paymentNumber: payment.paymentNumber,
+        totalOrderAmount: payment.totalOrderAmount,
+        totalPaidSoFar: payment.totalPaidSoFar,
+        remainingAmount: payment.totalOrderAmount - payment.totalPaidSoFar,
+        timestamp: new Date().toISOString(),
+      },
+      correlation_id: '',
+      exchange: EXCHANGE_NAME,
+      routing_key: PaymentEvents.PAYMENT_PARTIAL,
     }
 
     await RabbitClient.publishEvent(
       EXCHANGE_NAME,
       PaymentEvents.PAYMENT_PARTIAL,
-      message
+      envelope
     )
 
     console.log(
@@ -113,22 +124,27 @@ export async function publishPaymentPartial(payment: IPayment): Promise<void> {
  */
 export async function publishPaymentFailed(payment: IPayment): Promise<void> {
   try {
-    const message = {
-      paymentId: payment.id,
-      orderId: payment.orderId,
-      userId: payment.userId,
-      amount: payment.amount,
-      currency: payment.currency,
-      method: payment.method,
-      errorCode: payment.errorCode,
-      errorMessage: payment.errorMessage,
-      timestamp: new Date().toISOString(),
+    const envelope = {
+      message: {
+        paymentId: payment.id,
+        orderId: payment.orderId,
+        userId: payment.userId,
+        amount: payment.amount,
+        currency: payment.currency,
+        method: payment.method,
+        errorCode: payment.errorCode,
+        errorMessage: payment.errorMessage,
+        timestamp: new Date().toISOString(),
+      },
+      correlation_id: '',
+      exchange: EXCHANGE_NAME,
+      routing_key: PaymentEvents.PAYMENT_FAILED,
     }
 
     await RabbitClient.publishEvent(
       EXCHANGE_NAME,
       PaymentEvents.PAYMENT_FAILED,
-      message
+      envelope
     )
 
     console.log(
@@ -159,21 +175,26 @@ export async function publishPaymentRefunded(
   reason?: string
 ): Promise<void> {
   try {
-    const message = {
-      paymentId: payment.id,
-      orderId: payment.orderId,
-      userId: payment.userId,
-      amount: payment.amount,
-      currency: payment.currency,
-      method: payment.method,
-      reason: reason || 'Refund processed',
-      timestamp: new Date().toISOString(),
+    const envelope = {
+      message: {
+        paymentId: payment.id,
+        orderId: payment.orderId,
+        userId: payment.userId,
+        amount: payment.amount,
+        currency: payment.currency,
+        method: payment.method,
+        reason: reason || 'Refund processed',
+        timestamp: new Date().toISOString(),
+      },
+      correlation_id: '',
+      exchange: EXCHANGE_NAME,
+      routing_key: PaymentEvents.PAYMENT_REFUNDED,
     }
 
     await RabbitClient.publishEvent(
       EXCHANGE_NAME,
       PaymentEvents.PAYMENT_REFUNDED,
-      message
+      envelope
     )
 
     console.log(

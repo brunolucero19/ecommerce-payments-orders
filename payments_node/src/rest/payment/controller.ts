@@ -4,7 +4,7 @@ import { Request, Response } from 'express'
 import * as paymentService from '../../domain/payment/service'
 import * as walletService from '../../domain/wallet/service'
 import { ordersService } from '../../domain/orders'
-import { PaymentMethod } from '../../domain/payment/payment'
+import { PaymentMethod, PaymentStatus } from '../../domain/payment/payment'
 import {
   CardData,
   BankTransferData,
@@ -162,6 +162,15 @@ export async function createPayment(req: Request, res: Response) {
     }
 
     // Crear el pago con información de la orden para pagos parciales
+    console.log('[Controller] Creando pago con datos:', {
+      orderId,
+      userId,
+      amount,
+      method,
+      totalOrderAmount: order.totalPrice,
+      previousPayments: order.totalPayment,
+    })
+
     const payment = await paymentService.createPayment({
       orderId,
       userId,
@@ -172,30 +181,76 @@ export async function createPayment(req: Request, res: Response) {
       previousPayments: order.totalPayment,
     })
 
-    // Para transferencias bancarias, iniciar proceso asíncrono de confirmación
-    if (method === PaymentMethod.BANK_TRANSFER) {
-      // Simular confirmación bancaria después de 45 segundos
-      paymentService.scheduleBankTransferConfirmation(payment.id)
+    // Aprobar automáticamente según el método de pago
+    let approvedPayment = payment
+
+    switch (method) {
+      case PaymentMethod.CREDIT_CARD:
+      case PaymentMethod.DEBIT_CARD:
+        // Tarjetas: aprobación instantánea (ya pasó validación Luhn)
+        const txnId = `CARD-${Date.now()}-${Math.random()
+          .toString(36)
+          .substr(2, 9)
+          .toUpperCase()}`
+        approvedPayment = await paymentService.approvePayment(payment.id, txnId)
+        console.log(
+          `[Controller] Pago con tarjeta aprobado automáticamente: ${txnId}`
+        )
+        break
+
+      case PaymentMethod.WALLET:
+        // Wallet: deducir saldo y aprobar
+        const withdrawSuccess = await walletService.withdraw(userId, amount)
+        if (!withdrawSuccess) {
+          throw new ValidationError([
+            newError('wallet', 'No se pudo deducir el saldo de la wallet'),
+          ])
+        }
+        const walletTxnId = `WALLET-${Date.now()}-${Math.random()
+          .toString(36)
+          .substr(2, 9)
+          .toUpperCase()}`
+        approvedPayment = await paymentService.approvePayment(
+          payment.id,
+          walletTxnId
+        )
+        console.log(
+          `[Controller] Pago con wallet aprobado automáticamente: ${walletTxnId}`
+        )
+        break
+
+      case PaymentMethod.BANK_TRANSFER:
+        // Transferencias: proceso asíncrono de confirmación (5 segundos)
+        paymentService.scheduleBankTransferConfirmation(payment.id)
+        console.log(
+          '[Controller] Transferencia bancaria en proceso de confirmación'
+        )
+        break
     }
 
     return res.status(201).send({
-      id: payment._id,
-      orderId: payment.orderId,
-      userId: payment.userId,
-      amount: payment.amount,
-      currency: payment.currency,
-      method: payment.method,
-      status: payment.status,
-      paymentData: payment.paymentData,
-      partialPayment: payment.partialPayment,
-      paymentNumber: payment.paymentNumber,
-      totalOrderAmount: payment.totalOrderAmount,
-      totalPaidSoFar: payment.totalPaidSoFar,
-      remainingAmount: payment.totalOrderAmount - payment.totalPaidSoFar,
-      created: payment.created,
+      id: approvedPayment._id,
+      orderId: approvedPayment.orderId,
+      userId: approvedPayment.userId,
+      amount: approvedPayment.amount,
+      currency: approvedPayment.currency,
+      method: approvedPayment.method,
+      status: approvedPayment.status,
+      transactionId: approvedPayment.transactionId,
+      paymentData: approvedPayment.paymentData,
+      partialPayment: approvedPayment.partialPayment,
+      paymentNumber: approvedPayment.paymentNumber,
+      totalOrderAmount: approvedPayment.totalOrderAmount,
+      totalPaidSoFar: approvedPayment.totalPaidSoFar,
+      remainingAmount:
+        approvedPayment.totalOrderAmount - approvedPayment.totalPaidSoFar,
+      created: approvedPayment.created,
+      updated: approvedPayment.updated,
       message:
         method === PaymentMethod.BANK_TRANSFER
           ? 'Transferencia en proceso de confirmación'
+          : approvedPayment.status === PaymentStatus.APPROVED
+          ? 'Pago aprobado exitosamente'
           : undefined,
     })
   } catch (err) {

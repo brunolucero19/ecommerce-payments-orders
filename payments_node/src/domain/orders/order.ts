@@ -9,12 +9,12 @@ export interface Order {
   orderId: string
   status: string
   cartId: string
-  totalPrice: number
-  totalPayment: number
+  totalPrice: number // Puede calcularse desde articles si no viene
+  totalPayment: number // Puede calcularse desde payments si no viene
   created: string
   updated: string
   articles: Article[]
-  payments: Payment[]
+  payments: Payment[] | null
 }
 
 /**

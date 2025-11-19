@@ -50,6 +50,23 @@ export class RabbitClient {
   }
 
   /**
+   * Inicializa los exchanges necesarios
+   */
+  static async initializeExchanges(): Promise<void> {
+    try {
+      const channel = await this.getChannel()
+      // Crear exchange payments_exchange al iniciar
+      await channel.assertExchange('payments_exchange', 'topic', {
+        durable: false,
+      })
+      console.log('[RabbitMQ] Exchange payments_exchange inicializado')
+    } catch (err) {
+      console.error('[RabbitMQ] Error inicializando exchanges:', err)
+      throw err
+    }
+  }
+
+  /**
    * Publica un mensaje en un exchange
    */
   static async publishEvent(
@@ -59,7 +76,7 @@ export class RabbitClient {
   ): Promise<void> {
     try {
       const channel = await this.getChannel()
-      await channel.assertExchange(exchange, 'topic', { durable: true })
+      await channel.assertExchange(exchange, 'topic', { durable: false })
 
       const messageBuffer = Buffer.from(JSON.stringify(message))
       channel.publish(exchange, routingKey, messageBuffer, {
@@ -88,7 +105,7 @@ export class RabbitClient {
     try {
       const channel = await this.getChannel()
 
-      await channel.assertExchange(exchange, 'topic', { durable: true })
+      await channel.assertExchange(exchange, 'topic', { durable: false })
       await channel.assertQueue(queue, { durable: true })
       await channel.bindQueue(queue, exchange, routingKey)
 
