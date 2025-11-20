@@ -1,7 +1,4 @@
 'use strict'
 
-/**
- * Módulo de integración con ordersgo
- */
-export { Order, Article, Payment, OrderStatus } from './order'
+export { Order, Article, Payment } from './order'
 export { OrdersService, ordersService } from './service'

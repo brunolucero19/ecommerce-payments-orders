@@ -20,11 +20,6 @@ import {
 } from '../../rabbit/events'
 import * as walletService from '../wallet/service'
 
-/**
- * Servicio de dominio para Payment
- * Contiene la lógica de negocio relacionada con pagos
- */
-
 export interface CreatePaymentData {
   orderId: string
   userId: string
@@ -133,7 +128,7 @@ export async function approvePayment(
   const savedPayment = await payment.save()
 
   // Guardar método preferido cuando el pago es exitoso
-  await savePreferredMethod(savedPayment.userId, savedPayment.method)
+  await savePreferredMethod(savedPayment.userId)
 
   // Publicar evento según si es pago parcial o completo
   try {
@@ -190,16 +185,12 @@ export async function rejectPayment(
 
 /**
  * Programa la confirmación de una transferencia bancaria
- * Simula el proceso asíncrono de confirmación del banco (5 segundos para testing)
+ * Simula el proceso asíncrono de confirmación del banco (5 segundos fue lo que elegí)
  */
 export async function scheduleBankTransferConfirmation(
   paymentId: string
 ): Promise<void> {
-  console.log(
-    `[BankTransfer] Programando confirmación para pago ${paymentId} en 5 segundos...`
-  )
-
-  // Simular delay de confirmación bancaria (5 segundos para testing)
+  // Simular delay de confirmación bancaria (5 segundos fue lo que elegí)
   setTimeout(async () => {
     try {
       const payment = await findById(paymentId)
@@ -358,10 +349,7 @@ export async function countByFilters(filters: any): Promise<number> {
  *
  * Determina el método preferido contando los pagos aprobados por método
  */
-export async function savePreferredMethod(
-  userId: string,
-  method: PaymentMethod
-): Promise<void> {
+export async function savePreferredMethod(userId: string): Promise<void> {
   try {
     // Contar pagos aprobados por cada método para este usuario
     const paymentsByMethod = await Payment.aggregate([
@@ -412,13 +400,8 @@ export async function savePreferredMethod(
       })
       await newPreferred.save()
     }
-
-    console.log(
-      `[PreferredMethod] Usuario ${userId}: método preferido ${preferred._id} con ${preferred.count} pagos aprobados`
-    )
   } catch (error) {
     console.error('[PreferredMethod] Error guardando método preferido:', error)
-    // No lanzar error para no afectar el flujo principal
   }
 }
 

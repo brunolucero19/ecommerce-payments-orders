@@ -4,11 +4,6 @@ import { Wallet, IWallet } from './wallet'
 import { ValidationError, newError } from '../../server/error'
 
 /**
- * Servicio de dominio para Wallet
- * Contiene la lógica de negocio relacionada con la billetera virtual
- */
-
-/**
  * Obtiene o crea la wallet de un usuario
  */
 export async function getOrCreateWallet(userId: string): Promise<IWallet> {

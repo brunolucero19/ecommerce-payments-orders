@@ -2,10 +2,6 @@
 
 import { Document, model, Schema } from 'mongoose'
 
-/**
- * Interface del documento Wallet en MongoDB
- * Cada usuario tiene una wallet con saldo disponible
- */
 export interface IWallet extends Document {
   userId: string
   balance: number

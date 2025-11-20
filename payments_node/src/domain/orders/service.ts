@@ -6,11 +6,6 @@ import { Order } from './order'
 
 const config = getConfig(process.env as any)
 
-/**
- * Servicio para integración con ordersgo
- *
- * Proporciona métodos para validar órdenes antes de procesar pagos
- */
 export class OrdersService {
   private ordersServiceUrl: string
 
@@ -20,11 +15,6 @@ export class OrdersService {
 
   /**
    * Valida que una orden exista en ordersgo
-   *
-   * @param orderId - ID de la orden a validar
-   * @param token - Token JWT del usuario (incluyendo "Bearer ")
-   * @returns Promise<Order> - Orden si existe
-   * @throws Error si la orden no existe o el servicio no está disponible
    */
   async validateOrderExists(orderId: string, token: string): Promise<Order> {
     try {
@@ -114,13 +104,8 @@ export class OrdersService {
    * Verifica:
    * - La orden existe
    * - El monto del pago no excede el total de la orden
-   * - La orden no está en estado inválido
-   *
-   * @param orderId - ID de la orden
-   * @param paymentAmount - Monto del pago a realizar
-   * @param token - Token JWT del usuario
-   * @returns Promise<Order> - Orden si es válida para pago
-   * @throws Error si la orden no es válida para recibir pago
+   * - La orden no está en estado inválido o cancelada
+  
    */
   async validateOrderForPayment(
     orderId: string,
