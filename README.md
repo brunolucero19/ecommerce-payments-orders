@@ -55,10 +55,10 @@ Microservicio de órdenes basado en Event Sourcing y CQRS. Gestiona el ciclo de 
 ┌──────▼───────────────────────▼────────────┐
 │         ordersgo (Port 3004)              │
 │         Event Sourcing + CQRS             │
-│  ┌─────────────┐  ┌─────────────┐        │
-│  │   Events    │  │ Projections │        │
-│  │   Store     │→ │  (Orders)   │        │
-│  └─────────────┘  └─────────────┘        │
+│  ┌─────────────┐  ┌─────────────┐         │
+│  │   Events    │  │ Projections │         │
+│  │   Store     │→ │  (Orders)   │         │
+│  └─────────────┘  └─────────────┘         │
 └──────┬────────────────────────────┬───────┘
        │                            │
        │ HTTP (validar orden)  RabbitMQ (eventos)
@@ -136,7 +136,7 @@ docker run -d --name mongo_payments -p 27018:27018 mongo:8.2
 **IMPORTANTE:** Debes tener los otros microservicios del e-commerce (authgo, cataloggo, cartgo) corriendo también.
 
 ```bash
-Ver en: [text](https://github.com/nmarsollier/ecommerce)
+Ver en: [https://github.com/nmarsollier/ecommerce](https://github.com/nmarsollier/ecommerce)
 ```
 
 #### 3.1. Orders Service
@@ -207,13 +207,6 @@ docker ps
 - **HTTP/REST**: Payments valida órdenes en Orders antes de procesar pagos
 - **RabbitMQ**: Comunicación asíncrona mediante eventos (payment._, order._)
 - **Event-Driven**: Cambios de estado propagados automáticamente entre servicios
-
-### Flujo Principal
-
-1. **Crear Orden**: Cliente → Orders (valida con Catalog y Cart)
-2. **Procesar Pago**: Cliente → Payments (valida orden en Orders)
-3. **Notificar Pago**: Payments → Orders (vía RabbitMQ)
-4. **Cancelar Orden**: Cliente → Orders → Payments (reembolso automático)
 
 ---
 
