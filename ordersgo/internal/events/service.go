@@ -88,6 +88,12 @@ func (s *eventService) placeOrderToEvent(event *PlacedOrderData) *Event {
 
 // SavePayment saves a payment event
 func (s *eventService) SavePayment(data *PaymentEvent) (*Event, error) {
+	// Verificar si el pago ya existe (idempotencia)
+	if existingEvent, _ := s.repository.FindPaymentByPaymentId(data.PaymentId); existingEvent != nil {
+		s.log.Info("Payment event already exists, skipping duplicate: ", data.PaymentId)
+		return existingEvent, nil
+	}
+
 	event, err := s.repository.Insert(newPaymentEvent(data))
 
 	if err != nil {

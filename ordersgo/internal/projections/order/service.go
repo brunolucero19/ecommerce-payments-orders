@@ -98,15 +98,31 @@ func (s *orderService) updateValidation(o *Order, e *events.Event) *Order {
 }
 
 func (s *orderService) updatePayment(o *Order, e *events.Event) *Order {
-	o.Payments = append(o.Payments, &PaymentEvent{
-		PaymentID:     e.Payment.PaymentId,
-		Method:        e.Payment.Method,
-		Amount:        e.Payment.Amount,
-		TransactionID: e.Payment.TransactionId,
-		Status:        e.Payment.Status,
-		ErrorMessage:  e.Payment.ErrorMessage,
-		ErrorCode:     e.Payment.ErrorCode,
-	})
+	// Verificar si el pago ya existe (por paymentId) para evitar duplicados
+	paymentExists := false
+	for _, existingPayment := range o.Payments {
+		if existingPayment.PaymentID == e.Payment.PaymentId {
+			paymentExists = true
+			// Actualizar el pago existente en caso de que el status haya cambiado
+			existingPayment.Status = e.Payment.Status
+			existingPayment.ErrorMessage = e.Payment.ErrorMessage
+			existingPayment.ErrorCode = e.Payment.ErrorCode
+			break
+		}
+	}
+
+	// Solo agregar si no existe
+	if !paymentExists {
+		o.Payments = append(o.Payments, &PaymentEvent{
+			PaymentID:     e.Payment.PaymentId,
+			Method:        e.Payment.Method,
+			Amount:        e.Payment.Amount,
+			TransactionID: e.Payment.TransactionId,
+			Status:        e.Payment.Status,
+			ErrorMessage:  e.Payment.ErrorMessage,
+			ErrorCode:     e.Payment.ErrorCode,
+		})
+	}
 
 	// Calcular total de pagos aprobados
 	var totalApproved float32

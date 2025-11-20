@@ -12,6 +12,7 @@ type EventsRepository interface {
 	Insert(event *Event) (*Event, error)
 	FindPlaceByCartId(cartId string) (*Event, error)
 	FindByOrderId(orderId string) ([]*Event, error)
+	FindPaymentByPaymentId(paymentId string) (*Event, error)
 }
 
 func NewEventsRepository(log log.LogRusEntry, collection db.Collection) EventsRepository {
@@ -82,4 +83,25 @@ func (r *eventsRepository) FindByOrderId(orderId string) ([]*Event, error) {
 	}
 
 	return events, nil
+}
+
+// FindPaymentByPaymentId busca un evento de pago por paymentId
+func (r *eventsRepository) FindPaymentByPaymentId(paymentId string) (*Event, error) {
+	event := &Event{}
+	filter := bson.D{
+		{Key: "$and",
+			Value: bson.A{
+				bson.M{"paymentEvent.paymentId": paymentId},
+				bson.M{"type": Payment},
+			},
+		},
+	}
+	if err := r.collection.FindOne(context.Background(), filter, event); err != nil {
+		if err.Error() != "mongo: no documents in result" {
+			r.log.Error(err)
+		}
+		return nil, err
+	}
+
+	return event, nil
 }
