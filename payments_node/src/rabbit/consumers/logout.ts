@@ -19,8 +19,11 @@ import { securityService } from '../../domain/security'
  * Estructura del mensaje de logout desde authgo
  */
 interface LogoutMessage {
-  type: string // 'logout'
+  type?: string // 'logout' (opcional para compatibilidad)
   message: string // Token completo con "Bearer "
+  correlation_id?: string // Campos adicionales que puede enviar authgo
+  exchange?: string
+  routing_key?: string
 }
 
 /**
@@ -32,18 +35,18 @@ async function processLogout(message: LogoutMessage): Promise<void> {
   try {
     console.log('[Logout Consumer] Procesando logout')
 
-    // Validar estructura del mensaje
-    if (!message.type || message.type !== 'logout') {
-      console.error('[Logout Consumer] Tipo de mensaje inválido:', message.type)
-      return
-    }
-
-    if (!message.message) {
-      console.error('[Logout Consumer] Token no presente en el mensaje')
-      return
-    }
-
+    // Extraer token del mensaje
+    // Soporta ambas estructuras:
+    // 1. { type: 'logout', message: 'Bearer ...' }
+    // 2. { message: 'Bearer ...', correlation_id, exchange, routing_key }
     const token = message.message
+
+    if (!token || typeof token !== 'string') {
+      console.error(
+        '[Logout Consumer] Token no presente o inválido en el mensaje'
+      )
+      return
+    }
 
     // Invalidar token del caché
     securityService.invalidate(token)
