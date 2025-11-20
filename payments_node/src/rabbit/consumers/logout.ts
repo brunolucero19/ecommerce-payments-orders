@@ -5,23 +5,15 @@ import { securityService } from '../../domain/security'
 
 /**
  * Consumer de eventos de logout desde authgo
- *
- * Escucha el exchange 'auth' (fanout) para invalidar tokens del caché
- * cuando un usuario hace logout.
- *
- * Patrón:
- * - authgo publica logout en exchange 'auth' tipo 'fanout'
- * - Todos los microservicios escuchan este exchange
- * - Cada microservicio invalida el token de su caché
  */
 
 /**
  * Estructura del mensaje de logout desde authgo
  */
 interface LogoutMessage {
-  type?: string // 'logout' (opcional para compatibilidad)
+  type?: string // 'logout'
   message: string // Token completo con "Bearer "
-  correlation_id?: string // Campos adicionales que puede enviar authgo
+  correlation_id?: string
   exchange?: string
   routing_key?: string
 }
@@ -36,9 +28,6 @@ async function processLogout(message: LogoutMessage): Promise<void> {
     console.log('[Logout Consumer] Procesando logout')
 
     // Extraer token del mensaje
-    // Soporta ambas estructuras:
-    // 1. { type: 'logout', message: 'Bearer ...' }
-    // 2. { message: 'Bearer ...', correlation_id, exchange, routing_key }
     const token = message.message
 
     if (!token || typeof token !== 'string') {
@@ -56,8 +45,6 @@ async function processLogout(message: LogoutMessage): Promise<void> {
     )
   } catch (error: any) {
     console.error('[Logout Consumer] Error procesando logout:', error.message)
-    // No lanzamos el error para que el mensaje se marque como procesado
-    // incluso si falla (evita reintento infinito)
   }
 }
 
@@ -65,7 +52,7 @@ async function processLogout(message: LogoutMessage): Promise<void> {
  * Inicia el consumer de logout
  *
  * Se conecta al exchange 'auth' (fanout) y procesa mensajes de logout.
- * El nombre de la cola es único para este servicio: 'payments_logout'
+ * El nombre de la cola para este servicio es: 'payments_logout'
  */
 export async function startLogoutConsumer(): Promise<void> {
   const EXCHANGE = 'auth'
@@ -75,13 +62,11 @@ export async function startLogoutConsumer(): Promise<void> {
   try {
     console.log('[Logout Consumer] Iniciando consumer de logout...')
 
-    // Para exchange fanout, no se usa routing key
     await consumeFanoutQueue(EXCHANGE, EXCHANGE_TYPE, QUEUE, processLogout)
 
     console.log('[Logout Consumer] Consumer iniciado exitosamente')
   } catch (error: any) {
     console.error('[Logout Consumer] Error iniciando consumer:', error.message)
-    // Reintentar conexión después de 5 segundos
     setTimeout(() => {
       console.log('[Logout Consumer] Reintentando conexión...')
       startLogoutConsumer()

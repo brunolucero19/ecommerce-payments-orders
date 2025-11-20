@@ -6,24 +6,10 @@ import { handle } from '../../server/error'
 
 /**
  * POST /api/wallet/deposit
- *
  * Deposita fondos en la wallet del usuario autenticado
- *
- * Body:
- * {
- *   "amount": 1000
- * }
- *
- * Response:
- * {
- *   "userId": "user123",
- *   "balance": 1500,
- *   "currency": "ARS"
- * }
  */
 export async function deposit(req: Request, res: Response) {
   try {
-    // El userId viene de req.user (inyectado por validateToken middleware)
     const userId = req.user!.id
     const { amount } = req.body
 
@@ -56,19 +42,10 @@ export async function deposit(req: Request, res: Response) {
 
 /**
  * GET /api/wallet/balance
- *
  * Consulta el saldo actual de la wallet del usuario autenticado
- *
- * Response:
- * {
- *   "userId": "user123",
- *   "balance": 1500,
- *   "currency": "ARS"
- * }
  */
 export async function getBalance(req: Request, res: Response) {
   try {
-    // El userId viene de req.user (inyectado por validateToken middleware)
     const userId = req.user!.id
 
     // Obtener balance

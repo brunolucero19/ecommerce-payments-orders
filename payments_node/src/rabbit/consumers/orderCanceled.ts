@@ -10,7 +10,7 @@ const EXCHANGE = 'payments_exchange'
 const ROUTING_KEY = 'order.canceled'
 const QUEUE = 'payments_order_canceled'
 const MAX_RETRIES = 3
-const RETRY_DELAY_MS = 1000 // 1 segundo base para backoff exponencial
+const RETRY_DELAY_MS = 1000
 
 interface OrderCanceledEvent {
   orderId: string
@@ -23,8 +23,7 @@ interface OrderCanceledEvent {
  * Procesa un evento de orden cancelada y reembolsa todos los pagos aprobados.
  */
 async function processOrderCanceled(event: any): Promise<void> {
-  // El evento viene en formato { message: { orderId, userId, ... } }
-  const { orderId, userId, reason } = event.message || event
+  const { orderId, reason } = event.message || event
 
   console.log(`[OrderCanceled] Procesando cancelación de orden ${orderId}`)
 
@@ -103,7 +102,6 @@ async function refundPaymentWithRetry(
       )
     } else {
       // Para tarjetas: solo marcamos como reembolsado
-      // En producción, aquí se llamaría al gateway de pagos (Stripe, PayPal, etc.)
       console.log(
         `[OrderCanceled] Pago ${paymentId} con ${payment.method} marcado para reembolso manual. ` +
           `Monto: ${payment.amount}, Usuario: ${payment.userId}`
@@ -139,7 +137,6 @@ async function refundPaymentWithRetry(
       console.error(
         `[OrderCanceled] Agotados reintentos para pago ${paymentId}. Requiere intervención manual.`
       )
-      // En producción, aquí se podría enviar una alerta o notificación
     }
   }
 }

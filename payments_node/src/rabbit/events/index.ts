@@ -5,6 +5,5 @@ export {
   publishPaymentPartial,
   publishPaymentFailed,
   publishPaymentRefunded,
-  publishPaymentCanceled,
   PaymentEvents,
 } from './publishers'

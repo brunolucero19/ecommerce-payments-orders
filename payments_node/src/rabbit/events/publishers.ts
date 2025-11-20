@@ -13,7 +13,6 @@ export const PaymentEvents = {
   PAYMENT_PARTIAL: 'payment.partial',
   PAYMENT_FAILED: 'payment.failed',
   PAYMENT_REFUNDED: 'payment.refunded',
-  PAYMENT_CANCELED: 'payment.canceled',
 }
 
 /**
@@ -26,7 +25,7 @@ export const PaymentEvents = {
  */
 export async function publishPaymentSuccess(payment: IPayment): Promise<void> {
   try {
-    // Estructura que espera commongo/rbt.ConsumeRabbitEvent
+    // Estructura que espera ordersgo
     const envelope = {
       message: {
         paymentId: payment.id,
@@ -38,7 +37,7 @@ export async function publishPaymentSuccess(payment: IPayment): Promise<void> {
         transactionId: payment.transactionId,
         timestamp: new Date().toISOString(),
       },
-      correlation_id: '', // Se puede agregar un ID único si es necesario
+      correlation_id: '',
       exchange: EXCHANGE_NAME,
       routing_key: PaymentEvents.PAYMENT_SUCCESS,
     }
@@ -208,46 +207,6 @@ export async function publishPaymentRefunded(
   } catch (error) {
     console.error(
       `[RabbitMQ] Error al publicar evento payment_refunded:`,
-      error
-    )
-    throw error
-  }
-}
-
-/**
- * Publica evento de pago cancelado
- *
- * Este evento notifica que un pago fue cancelado antes de ser procesado.
- *
- * @param payment - El pago cancelado
- */
-export async function publishPaymentCanceled(payment: IPayment): Promise<void> {
-  try {
-    const message = {
-      paymentId: payment.id,
-      orderId: payment.orderId,
-      userId: payment.userId,
-      amount: payment.amount,
-      currency: payment.currency,
-      timestamp: new Date().toISOString(),
-    }
-
-    await RabbitClient.publishEvent(
-      EXCHANGE_NAME,
-      PaymentEvents.PAYMENT_CANCELED,
-      message
-    )
-
-    console.log(
-      `[RabbitMQ] Evento publicado: ${PaymentEvents.PAYMENT_CANCELED}`,
-      {
-        paymentId: payment.id,
-        orderId: payment.orderId,
-      }
-    )
-  } catch (error) {
-    console.error(
-      `[RabbitMQ] Error al publicar evento payment_canceled:`,
       error
     )
     throw error

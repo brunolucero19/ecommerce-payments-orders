@@ -1,15 +1,10 @@
 'use strict'
 
-/**
- * Inicializa todos los consumers de RabbitMQ
- */
 import { startLogoutConsumer } from './logout'
 import { startOrderCanceledConsumer } from './orderCanceled'
 
 /**
- * Inicia todos los consumers del microservicio
- *
- * Debe llamarse al iniciar el servidor
+ * Iniciar todos los consumers del microservicio
  */
 export async function initConsumers(): Promise<void> {
   console.log('[Consumers] Iniciando consumers de RabbitMQ...')
