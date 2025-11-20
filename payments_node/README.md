@@ -1,34 +1,31 @@
-# 💳 Microservicio de Pagos
+# Microservicio de Pagos
 
 Microservicio completo para gestión de pagos en un sistema de e-commerce, con soporte para múltiples métodos de pago, pagos parciales, refunds automáticos y integración event-driven con otros microservicios.
 
 **Autor:** Bruno Lucero  
-**Repositorio:** [https://github.com/brunolucero19/ecommerce-payments-orders](https://github.com/brunolucero19/ecommerce-payments-orders)  
 **Tecnologías:** Node.js 20.x, TypeScript 5.5, Express 4.19, MongoDB 8.2, RabbitMQ
 
 ---
 
-## 📋 Tabla de Contenidos
+## Tabla de Contenidos
 
 - [Características Principales](#-características-principales)
 - [Arquitectura](#-arquitectura)
 - [Instalación](#-instalación)
 - [Configuración](#-configuración)
 - [Uso](#-uso)
-- [Testing](#-testing)
 - [Documentación API](#-documentación-api)
 - [Integración con Microservicios](#-integración-con-microservicios)
-- [Docker](#-docker)
 
 ---
 
-## ✨ Características Principales
+## Características Principales
 
 ### Métodos de Pago
 
-- 💳 **Tarjetas de Crédito/Débito**: Procesamiento inmediato con validación
-- 🏦 **Transferencia Bancaria**: Estado PENDING con confirmación automática (5s) o manual
-- 👛 **Wallet**: Sistema de billetera virtual con depósitos y retiros
+- **Tarjetas de Crédito/Débito**: Procesamiento inmediato con validación
+- **Transferencia Bancaria**: Estado PENDING con confirmación automática (5s) o manual
+- **Wallet**: Sistema de billetera virtual con depósitos y retiros
 
 ### Funcionalidades Avanzadas
 
@@ -40,7 +37,10 @@ Microservicio completo para gestión de pagos en un sistema de e-commerce, con s
   - 3 reintentos con exponential backoff
   - Refund automático a wallet
   - Procesamiento manual para tarjetas
-- **Método Preferido**: Guarda el método de pago más usado por cada usuario
+- **Método Preferido**: Sistema inteligente que determina el método más usado por agregación
+  - Cuenta todos los pagos aprobados por método
+  - Selecciona el método con más transacciones exitosas
+  - En empate, usa el método más reciente
 - **Validación de Órdenes**: Integración HTTP con ordersgo para validar antes de crear pago
 - **Autenticación JWT**: Validación de tokens con cache en memoria
 - **Event-Driven Architecture**: Publica eventos a RabbitMQ para integración con otros servicios
@@ -54,7 +54,7 @@ Microservicio completo para gestión de pagos en un sistema de e-commerce, con s
 
 ---
 
-## 🏗 Arquitectura
+## Arquitectura
 
 Desarrollado siguiendo **Domain-Driven Design (DDD)** y **Clean Architecture**:
 
@@ -105,7 +105,7 @@ src/
 
 ---
 
-## 🚀 Instalación
+## Instalación
 
 ### Prerequisitos
 
@@ -124,7 +124,7 @@ npm install
 
 ---
 
-## ⚙️ Configuración
+## Configuración
 
 ### 1. Variables de Entorno
 
@@ -171,9 +171,9 @@ Ver `src/server/environment.ts` para más detalles.
 
 ---
 
-## 💻 Uso
+## Uso
 
-### Opción 1: Docker (Recomendado para producción)
+### Opción 1: Docker (Recomendado)
 
 Levanta el microservicio de pagos en Docker:
 
@@ -213,69 +213,11 @@ docker run -d --name mongo_payments -p 27018:27017 mongo:8.2
 
 # 2. Ejecutar en modo desarrollo (con watch)
 npm start
-
-# O compilar y ejecutar en producción
-npm run build
-npm run serve
-```
-
-### Scripts Disponibles
-
-```bash
-npm start          # Build + watch mode (desarrollo)
-npm run build      # Compilar TypeScript
-npm run serve      # Ejecutar código compilado
-npm test           # Ejecutar tests con cobertura
-npm run tslint     # Verificar código con TSLint
 ```
 
 ---
 
-## 🧪 Testing
-
-### Tests Unitarios
-
-```bash
-# Ejecutar todos los tests
-npm test
-
-# Tests sin cobertura
-npm test -- --no-coverage
-
-# Tests en modo watch
-npm test -- --watch
-
-# Tests específicos
-npm test -- --testPathPattern="payment"
-```
-
-### Cobertura Actual
-
-- **Payment Model**: 78.78% statements, 85.71% branches
-- **Tests pasando**: 5/5 ✅
-
-Ver [TESTING.md](TESTING.md) para:
-
-- 9 casos de uso detallados para testing manual
-- Ejemplos de requests con curl/Postman
-- Validaciones por caso de uso
-- Guía de debugging
-
-### Testing Manual - Casos de Uso
-
-1. **Pago Exitoso** (Credit Card)
-2. **Pago Parcial** (Múltiples transacciones)
-3. **Pago Fallido** (Validación de errores)
-4. **Transferencia Bancaria** (Confirmación automática)
-5. **Orden Cancelada** (Refund automático)
-6. **Wallet** (Depósito, retiro, refund)
-7. **Método Preferido** (Tracking automático)
-8. **Historial** (Paginación)
-9. **Aprobación Manual** (Transferencias pendientes)
-
----
-
-## 📚 Documentación API
+## Documentación API
 
 ### Swagger UI (Interactivo)
 
@@ -314,7 +256,6 @@ POST   /api/payments/:id/refund   # Reembolso
 ```http
 POST   /api/wallet/deposit        # Depositar fondos
 GET    /api/wallet/balance        # Consultar saldo
-POST   /api/wallet/refund         # Reembolso a wallet
 ```
 
 Todos los endpoints requieren header:
@@ -325,7 +266,7 @@ Authorization: Bearer <JWT_TOKEN>
 
 ---
 
-## 🔗 Integración con Microservicios
+## Integración con Microservicios
 
 ### Eventos Publicados (RabbitMQ)
 
@@ -340,10 +281,10 @@ Exchange: `payments_exchange` (topic)
 
 ### Eventos Consumidos
 
-| Exchange               | Routing Key      | Acción                                    |
-| ---------------------- | ---------------- | ----------------------------------------- |
-| `auth` (fanout)        | -                | `user.logout`: Invalida token en cache    |
-| `order_events` (topic) | `order.canceled` | Reembolsa automáticamente pagos aprobados |
+| Exchange                    | Routing Key      | Acción                                    |
+| --------------------------- | ---------------- | ----------------------------------------- |
+| `auth` (fanout)             | -                | `user.logout`: Invalida token en cache    |
+| `payments_exchange` (topic) | `order.canceled` | Reembolsa automáticamente pagos aprobados |
 
 ### Integración HTTP
 
@@ -363,126 +304,6 @@ El microservicio ordersgo (Go) consume los eventos de pagos:
 ```
 
 Ver `/ordersgo/internal/rabbit/` para implementación de consumers.
-
----
-
-## 🐳 Docker
-
-### Imágenes
-
-- **Desarrollo**: `Dockerfile` - Multi-stage con watch mode
-- **Producción**: `Dockerfile.prod` - Imagen optimizada
-
-### Build
-
-```bash
-# Desarrollo
-docker build -t payments-node:dev .
-
-# Producción
-docker build -f Dockerfile.prod -t payments-node:prod .
-```
-
-### Run Individual
-
-```bash
-docker run -d \
-  --name payments-node \
-  -p 3005:3005 \
-  -e MONGODB_URI=mongodb://host.docker.internal:27018/payments \
-  -e RABBITMQ_URL=amqp://host.docker.internal \
-  -e JWT_SECRET=your-secret \
-  payments-node:dev
-```
-
-### Docker Compose
-
-Ver [DOCKER.md](DOCKER.md) para configuración completa.
-
----
-
-## 📂 Estructura del Proyecto
-
-```
-payments_node/
-├── src/
-│   ├── domain/              # Lógica de negocio (DDD)
-│   │   ├── payment/         # Agregado Payment
-│   │   ├── wallet/          # Agregado Wallet
-│   │   ├── orders/          # Cliente HTTP Orders
-│   │   └── security/        # Métodos preferidos
-│   ├── rabbit/              # Event-driven integration
-│   │   ├── events/          # Publishers
-│   │   └── consumers/       # Consumers (logout, orderCanceled)
-│   ├── rest/                # API REST
-│   │   ├── payment/         # Payment controller
-│   │   ├── wallet/          # Wallet controller
-│   │   └── middleware/      # Auth middleware
-│   ├── server/              # Configuración
-│   │   ├── express.ts
-│   │   ├── swagger.ts       # OpenAPI spec
-│   │   ├── environment.ts   # Validación .env
-│   │   └── database.ts
-│   └── server.ts            # Entry point
-├── test/                    # Tests (Jest + TypeScript)
-│   ├── domain/
-│   ├── rabbit/
-│   └── rest/
-├── coverage/                # Reportes de cobertura
-├── dist/                    # Código compilado
-├── .env.example             # Plantilla de configuración
-├── Dockerfile               # Imagen Docker multi-stage
-├── Dockerfile               # Imagen desarrollo
-├── Dockerfile.prod          # Imagen producción
-├── jest.config.js           # Configuración Jest
-├── tsconfig.json            # Configuración TypeScript
-├── tslint.json              # Reglas de linting
-├── README.md                # Este archivo
-├── README-API.md            # Documentación API detallada
-├── DOCUMENTACION.md         # Especificación casos de uso
-├── TESTING.md               # Guía de testing
-└── DOCKER.md                # Guía Docker detallada
-```
-
----
-
-## 🔍 Troubleshooting
-
-### Puerto 27018 en uso
-
-```bash
-# Ver qué usa el puerto
-netstat -ano | findstr :27018
-
-# Cambiar puerto en .env y variable de entorno SERVER_PORT
-```
-
-### RabbitMQ no conecta
-
-```bash
-# Verificar que RabbitMQ esté corriendo
-rabbitmqctl status
-
-# Ver logs
-docker logs rabbitmq
-```
-
-### Errores de autenticación
-
-```bash
-# Verificar JWT_SECRET en .env
-# Debe coincidir con Auth Service
-```
-
-### MongoDB no conecta
-
-```bash
-# Verificar MongoDB
-docker-compose ps mongo
-
-# Ver logs
-docker-compose logs mongo
-```
 
 ---
 

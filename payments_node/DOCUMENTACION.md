@@ -65,18 +65,19 @@
 
 - Camino normal:
 
-  - El servicio recibe evento `order.canceled` de RabbitMQ
+  - El servicio recibe evento `order.canceled` de RabbitMQ (exchange: `payments_exchange`)
   - Busca todos los pagos APPROVED asociados a la orden
   - Para cada pago:
-    - Si es wallet, acredita el monto automáticamente con `walletService.refund()`
-    - Si es tarjeta/transferencia, marca como REFUNDED (reembolso manual)
+    - Si es wallet, acredita el monto automáticamente con `walletService.deposit()`
+    - Si es tarjeta/transferencia, marca como REFUNDED (reembolso manual externo)
   - Marca el pago como REFUNDED
-  - Publica evento `payment.refunded` para cada pago
+  - Publica evento `payment.refunded` para cada pago reembolsado
 
 - Caminos alternativos:
-  - Si un reembolso falla, reintenta hasta 3 veces con backoff exponencial
-  - Si agota los reintentos, registra error y continúa con los demás pagos
+  - Si un reembolso falla, reintenta hasta 3 veces con backoff exponencial (1s, 2s, 4s)
+  - Si agota los reintentos, registra error en logs pero continúa con los demás pagos
   - No bloquea el reembolso de otros pagos por un fallo individual
+  - Si la orden no tiene pagos aprobados, no hace nada (ya fueron reembolsados o nunca se pagó)
 
 ### CU5: Consultar historial de pagos del usuario
 
@@ -99,11 +100,32 @@
 - Camino normal:
 
   - Usuario consulta su método preferido
-  - El servicio busca el último método de pago exitoso
+  - El servicio ejecuta agregación MongoDB sobre todos los pagos APPROVED del usuario
+  - Agrupa los pagos por método, cuenta cuántos pagos exitosos tiene cada uno
+  - El método preferido es el que tiene **más pagos aprobados** (frecuencia de uso)
+  - Si hay empate en cantidad de pagos, desempata por el método usado más recientemente (lastUsed)
   - Retorna método, fecha de último uso, cantidad de usos exitosos
 
 - Caminos alternativos:
   - Si el usuario nunca realizó un pago exitoso, retorna mensaje indicando que no hay método preferido
+
+**Nota técnica**: La lógica usa agregación MongoDB con pipeline:
+
+```javascript
+;[
+  { $match: { userId, status: 'approved' } },
+  {
+    $group: {
+      _id: '$method',
+      count: { $sum: 1 },
+      lastUsed: { $max: '$updated' },
+    },
+  },
+  { $sort: { count: -1, lastUsed: -1 } },
+]
+```
+
+Esto garantiza que el método preferido sea el **más usado**, no simplemente el último usado.
 
 ### CU7: Aprobar pago PENDING manualmente
 
@@ -127,13 +149,15 @@
 
 - Camino normal:
 
-  - **Depositar**: Usuario deposita fondos, se acreditan a su wallet
+  - **Depositar**: Usuario deposita fondos manualmente, se acreditan a su wallet
   - **Consultar saldo**: Usuario consulta su saldo disponible
-  - **Reembolsar**: Sistema acredita reembolso por cancelación/devolución
+  - **Retirar**: Sistema descuenta automáticamente al realizar pago con wallet
+  - **Reembolsar**: Sistema acredita automáticamente reembolsos por cancelación (usa deposit internamente)
 
 - Caminos alternativos:
-  - Si el usuario no tiene wallet, se crea automáticamente con saldo 0
+  - Si el usuario no tiene wallet, se crea automáticamente con saldo 0 al primer depósito
   - Los montos deben ser siempre positivos y mayores a 0
+  - No se permite retirar si el saldo es insuficiente
 
 ### CU9: Pagos parciales múltiples
 
@@ -142,7 +166,8 @@
 - Camino normal:
 
   - Usuario realiza primer pago por monto parcial (ej: $500 de $1500)
-  - El servicio calcula: paymentNumber=1, totalPaidSoFar=$500, partialPayment=true
+  - El servicio valida que la orden existe y calcula pagos previos
+  - Calcula: paymentNumber=1, totalPaidSoFar=$500, partialPayment=true
   - Publica evento `payment.partial` (no `payment.success`)
   - Usuario realiza segundo pago ($600)
   - El servicio calcula: paymentNumber=2, totalPaidSoFar=$1100, partialPayment=true
@@ -152,7 +177,8 @@
 
 - Caminos alternativos:
   - Si un pago parcial es rechazado, no afecta los pagos anteriores exitosos
-  - El usuario puede combinar diferentes métodos de pago (tarjeta + wallet)
+  - El usuario puede combinar diferentes métodos de pago (tarjeta + wallet + transferencia)
+  - No se puede pagar más del monto total de la orden (validación en payments_node)
 
 ## Modelo de datos
 
@@ -205,11 +231,13 @@
 
 - \_id: string (generado por MongoDB)
 - userId: string (único, cada usuario tiene un solo método preferido)
-- method: enum ["credit_card", "debit_card", "bank_transfer", "wallet"]
+- method: enum ["credit_card", "debit_card", "bank_transfer", "wallet"] (método con más pagos aprobados)
 - lastUsed: Date (última vez que usó este método con éxito)
-- successCount: number (cantidad de pagos exitosos con este método, se incrementa automáticamente)
+- successCount: number (total de pagos exitosos con este método, se recalcula con cada pago)
 - created: Date (timestamp automático de Mongoose)
 - updated: Date (timestamp automático de Mongoose)
+
+**Nota**: El método preferido no es simplemente "el último usado", sino **el método con más pagos aprobados**. Se recalcula con cada nuevo pago exitoso usando agregación MongoDB que cuenta todos los pagos APPROVED por método.
 
 ## Interfaz REST
 
@@ -451,6 +479,8 @@ si el pago no existe
 }
 ```
 
+**Nota**: El método retornado es el que tiene **más pagos aprobados** del usuario, no simplemente el último usado. El campo `successCount` indica el total de pagos exitosos con ese método.
+
 ### Aprobar pago manualmente
 
 `PUT /api/payments/:id/approve`
@@ -571,14 +601,16 @@ si el pago no existe
   "balance": 7500,
   "currency": "ARS"
 }
+
+**Nota importante sobre reembolsos**:
+
+- Los reembolsos a wallet se procesan **automáticamente** cuando se cancela una orden
+- El consumer `orderCanceled` recibe el evento desde RabbitMQ y llama a `walletService.deposit()`
+- Los reembolsos manuales también pueden procesarse vía `POST /api/payments/:id/refund`
+- Solo los pagos con método WALLET se reembolsan automáticamente a la wallet
+- Tarjetas y transferencias se marcan como REFUNDED pero requieren proceso manual externo
+
 ```
-
-### Reembolsos
-
-**Nota**: Los reembolsos a wallet se procesan automáticamente usando `POST /api/wallet/deposit` cuando se reembolsa un pago realizado con método WALLET a través del endpoint `POST /api/payments/:id/refund`.
-}
-
-````
 
 ## Interfaz asincrónica (RabbitMQ)
 
@@ -601,7 +633,7 @@ Publica en topic exchange `payments_exchange` con routing key `payment.success`
   "transactionId": "txn789",
   "timestamp": "2025-11-16T10:30:00.000Z"
 }
-````
+```
 
 #### Pago parcial exitoso
 
@@ -668,43 +700,81 @@ Publica en topic exchange `payments_exchange` con routing key `payment.refunded`
 
 #### Orden cancelada
 
-Recibe de topic exchange `order_events` con routing key `order.canceled`
+Recibe de topic exchange `payments_exchange` con routing key `order.canceled`
 
 Cola: `payments_order_canceled`
 
-**Body**
+**Body (formato de commongo/rbt)**
 
 ```json
 {
-  "orderId": "order123",
-  "userId": "user456",
-  "canceledAt": "2025-11-16T11:00:00.000Z",
-  "reason": "Cancelada por el usuario"
+  "correlation_id": "123e4567-e89b-12d3-a456-426614174000",
+  "exchange": "",
+  "routing_key": "",
+  "message": {
+    "orderId": "order123",
+    "userId": "user456",
+    "canceledAt": "2025-11-16T11:00:00.000Z",
+    "reason": "Cancelada por el usuario"
+  }
 }
 ```
 
 **Procesamiento**:
 
+- Extrae `orderId` de `event.message.orderId`
 - Busca todos los pagos APPROVED de la orden
-- Reembolsa cada pago (automático para wallet, manual para tarjetas)
-- Publica evento `payment.refunded` por cada reembolso
+- Para cada pago:
+  - Si método = WALLET: llama a `walletService.deposit(userId, amount)` para acreditar automáticamente
+  - Si método = CREDIT_CARD, DEBIT_CARD, BANK_TRANSFER: solo marca como REFUNDED (reembolso manual)
+- Marca el pago como REFUNDED con `paymentService.refundPayment(paymentId)`
+- Publica evento `payment.refunded` por cada reembolso exitoso
+- Sistema de reintentos: 3 intentos con backoff exponencial (1s, 2s, 4s)
+- Si falla después de 3 intentos, registra error en logs para intervención manual
 
 #### Usuario logout
 
-Recibe de fanout exchange `auth`
+Recibe de fanout exchange `auth` (durable: false)
 
-Cola: `payments_logout`
+Cola: `payments_logout` (durable: true, exclusiva para este microservicio)
 
-**Body**
+**Configuración**:
+
+- Exchange: `auth` tipo `fanout`
+- Queue: `payments_logout`
+- Binding: sin routing key (fanout distribuye a todas las colas)
+- Cada microservicio tiene su propia cola de logout
+
+**Body (formato flexible)**
 
 ```json
 {
   "type": "logout",
+  "message": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "correlation_id": "123e4567-e89b-12d3-a456-426614174000",
+  "exchange": "auth",
+  "routing_key": ""
+}
+```
+
+O formato simplificado:
+
+```json
+{
   "message": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
 ```
 
 **Procesamiento**:
 
-- Invalida el token del caché de seguridad
-- Elimina la sesión del usuario
+- Extrae el token del campo `message` (soporta ambos formatos)
+- Valida que el token sea string válido
+- Invalida el token del caché de seguridad con `securityService.invalidate(token)`
+- Marca el mensaje como procesado (ACK) incluso si falla (evita reintento infinito)
+- Log: "[Logout Consumer] Token invalidado: Bearer eyJ..."
+
+**Tolerancia a fallos**:
+
+- Si el consumer falla al iniciar, reintenta conexión cada 5 segundos
+- Si falla al procesar un mensaje, registra error pero marca como procesado (ACK)
+- No lanza excepciones que bloqueen otros mensajes en la cola

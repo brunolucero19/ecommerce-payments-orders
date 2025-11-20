@@ -2,7 +2,7 @@
 
 API REST para gestión de pagos en e-commerce. Soporta múltiples métodos de pago (tarjetas, transferencias, billetera), pagos parciales y reembolsos automáticos.
 
-## 📚 Documentación Interactiva
+## Documentación Interactiva
 
 La documentación completa e interactiva con Swagger está disponible cuando el servidor está en ejecución:
 
@@ -15,22 +15,9 @@ Desde la interfaz de Swagger puedes:
 - Ver ejemplos de request/response
 - Consultar los schemas de datos
 
-## 🚀 Inicio Rápido
-
-```bash
-# Instalar dependencias
-npm install
-
-# Compilar TypeScript
-npm run build
-
-# Iniciar servidor
-npm run serve
-```
-
 El servidor se ejecuta en el puerto **3005** por defecto.
 
-## 🔐 Autenticación
+## Autenticación
 
 Todos los endpoints de la API (excepto `/health`) requieren autenticación mediante **JWT Bearer Token**.
 
@@ -42,7 +29,7 @@ Authorization: Bearer <token>
 
 El token se obtiene del servicio de autenticación (authgo) en el puerto 3000.
 
-## 📋 Resumen de Endpoints
+## Resumen de Endpoints
 
 ### Payments
 
@@ -69,21 +56,30 @@ El token se obtiene del servicio de autenticación (authgo) en el puerto 3000.
 | ------ | --------- | ------------------------- |
 | GET    | `/health` | Health check del servicio |
 
-## 💳 Métodos de Pago Soportados
+## Métodos de Pago Soportados
 
 - **CREDIT_CARD**: Tarjeta de crédito (validación Luhn)
 - **DEBIT_CARD**: Tarjeta de débito (validación Luhn)
 - **BANK_TRANSFER**: Transferencia bancaria (confirmación asíncrona, 5 segundos)
 - **WALLET**: Billetera virtual (saldo interno)
 
-## 📊 Estados de Pago
+### Método de Pago Preferido
+
+El sistema determina automáticamente el método preferido del usuario mediante **agregación MongoDB**:
+
+- Cuenta todos los pagos aprobados por método de pago
+- El método preferido es el que tiene **más pagos exitosos** (no solo el último usado)
+- En caso de empate, desempata por el método usado más recientemente
+- Se actualiza automáticamente con cada nuevo pago exitoso
+
+## Estados de Pago
 
 - **PENDING**: Pago creado, esperando confirmación
 - **APPROVED**: Pago aprobado exitosamente
 - **REJECTED**: Pago rechazado
 - **REFUNDED**: Pago reembolsado
 
-## 🔄 Eventos RabbitMQ
+## Eventos RabbitMQ
 
 ### Eventos Publicados
 
@@ -164,9 +160,9 @@ Publicado cuando un pago es reembolsado.
 
 Consumido del exchange `auth` para invalidar tokens en el cache cuando un usuario cierra sesión.
 
-#### `order.canceled` (exchange: `order_events`, routing key: `order.canceled`)
+#### `order.canceled` (exchange: `payments_exchange`, routing key: `order.canceled`)
 
-Consumido del exchange `order_events` para procesar reembolsos automáticos cuando una orden es cancelada.
+Consumido del exchange `payments_exchange` para procesar reembolsos automáticos cuando una orden es cancelada.
 
 ```json
 {
@@ -176,93 +172,7 @@ Consumido del exchange `order_events` para procesar reembolsos automáticos cuan
 }
 ```
 
-**Comportamiento:**
-
-- Busca todos los pagos APPROVED de la orden
-- Para cada pago WALLET: acredita automáticamente en la billetera
-- Para cada pago con TARJETA: marca como REFUNDED (requiere procesamiento manual)
-- Reintentos: 3 intentos con backoff exponencial (1s, 2s, 4s)
-- Publica evento `payment.refunded` por cada reembolso exitoso
-
-## 🧪 Ejemplos de Uso
-
-### Crear Pago con Tarjeta
-
-```bash
-curl -X POST http://localhost:3005/api/payments \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "orderId": "507f1f77bcf86cd799439012",
-    "amount": 15000.50,
-    "method": "CREDIT_CARD",
-    "paymentData": {
-      "cardNumber": "4532015112830366",
-      "cardHolder": "JUAN PEREZ",
-      "expiryDate": "12/26",
-      "cvv": "123"
-    }
-  }'
-```
-
-### Crear Pago con Billetera
-
-```bash
-curl -X POST http://localhost:3005/api/payments \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "orderId": "507f1f77bcf86cd799439012",
-    "amount": 10000.00,
-    "method": "WALLET",
-    "paymentData": {}
-  }'
-```
-
-### Consultar Saldo de Billetera
-
-```bash
-curl -X GET http://localhost:3005/api/wallet/balance \
-  -H "Authorization: Bearer <token>"
-```
-
-### Depositar en Billetera
-
-```bash
-curl -X POST http://localhost:3005/api/wallet/deposit \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "amount": 50000.00
-  }'
-```
-
-### Aprobar Pago Manualmente
-
-```bash
-curl -X PUT http://localhost:3005/api/payments/507f1f77bcf86cd799439011/approve \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "transactionId": "MANUAL-TXN-123"
-  }'
-```
-
-## 🛠️ Códigos de Error
-
-| Código             | Descripción                |
-| ------------------ | -------------------------- |
-| EXPIRED_CARD       | Tarjeta expirada           |
-| INSUFFICIENT_FUNDS | Fondos insuficientes       |
-| INVALID_NUMBER     | Número de tarjeta inválido |
-| INVALID_CVV        | CVV inválido               |
-| PROCESSING_ERROR   | Error de procesamiento     |
-| INVALID_CBU        | CBU inválido               |
-| BANK_REJECTED      | Rechazado por el banco     |
-| TIMEOUT            | Timeout en la operación    |
-| VALIDATION_ERROR   | Error de validación        |
-
-## 📦 Pagos Parciales
+## Pagos Parciales
 
 El sistema soporta **múltiples pagos por orden**. Características:
 
@@ -278,7 +188,7 @@ El sistema soporta **múltiples pagos por orden**. Características:
 2. Primer pago: $15.000 → `payment.partial` (queda $10.000)
 3. Segundo pago: $10.000 → `payment.success` (orden completa)
 
-## 🔧 Variables de Entorno
+## Variables de Entorno
 
 Ver archivo `.env.example` para la lista completa de variables requeridas.
 
@@ -291,6 +201,6 @@ Variables principales:
 - `AUTH_SERVICE_URL`: URL del servicio de autenticación (authgo)
 - `ORDERS_SERVICE_URL`: URL del servicio de órdenes (ordersgo)
 
-## 📄 Más Información
+## Más Información
 
 Para documentación completa del negocio y casos de uso, consultar: `DOCUMENTACION.md`
