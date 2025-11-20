@@ -276,7 +276,7 @@ JWT_SECRET=tu-secret-minimo-32-caracteres
 
 ## Licencia
 
-Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
+Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](./payments_node/LICENSE) para más detalles.
 
 ---
 
