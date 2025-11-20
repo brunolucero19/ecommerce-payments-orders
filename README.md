@@ -135,9 +135,7 @@ docker run -d --name mongo_payments -p 27018:27018 mongo:8.2
 
 **IMPORTANTE:** Debes tener los otros microservicios del e-commerce (authgo, cataloggo, cartgo) corriendo también.
 
-```
-Ver en: [https://github.com/nmarsollier/ecommerce](https://github.com/nmarsollier/ecommerce)
-```
+Ver en: [](https://github.com/nmarsollier/ecommerce)
 
 #### 3.1. Orders Service
 
