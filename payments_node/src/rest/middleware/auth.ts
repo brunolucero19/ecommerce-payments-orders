@@ -22,20 +22,6 @@ declare global {
  * Valida el token JWT del header Authorization y obtiene información del usuario.
  * Si el token es válido, agrega el usuario a req.user y el token a req.token.
  * Si el token es inválido, retorna 401 Unauthorized.
- *
- * Uso:
- * ```typescript
- * router.post('/payments', validateToken, createPayment)
- * ```
- *
- * Luego en el handler:
- * ```typescript
- * function createPayment(req: Request, res: Response) {
- *   const userId = req.user.id
- *   const userName = req.user.name
- *   // ...
- * }
- * ```
  */
 export async function validateToken(
   req: Request,
@@ -84,34 +70,4 @@ export async function validateToken(
       message: error.message || 'Invalid or expired token',
     })
   }
-}
-
-/**
- * Helper para obtener el token del header Authorization
- *
- * @param req - Express Request
- * @returns Token completo con "Bearer " o undefined si no existe
- */
-export function getTokenFromRequest(req: Request): string | undefined {
-  return req.headers.authorization
-}
-
-/**
- * Helper para obtener solo el token JWT sin el prefijo "Bearer "
- *
- * @param req - Express Request
- * @returns Token JWT sin prefijo o undefined si no existe
- */
-export function getJwtFromRequest(req: Request): string | undefined {
-  const authHeader = req.headers.authorization
-  if (!authHeader) {
-    return undefined
-  }
-
-  const parts = authHeader.split(' ')
-  if (parts.length === 2 && parts[0].toUpperCase() === 'BEARER') {
-    return parts[1]
-  }
-
-  return undefined
 }

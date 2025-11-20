@@ -4,7 +4,6 @@ import { ValidationError, newError } from '../../../server/error'
  * Value Object: WalletPaymentData
  *
  * Representa el uso de la wallet para un pago.
- * Más simple que los otros porque solo necesita referenciar al wallet del usuario.
  */
 export class WalletPaymentData {
   private readonly userId: string
@@ -23,9 +22,5 @@ export class WalletPaymentData {
       walletPayment: true,
       userId: this.userId,
     }
-  }
-
-  getUserId(): string {
-    return this.userId
   }
 }

@@ -109,7 +109,7 @@ Más infraestructura:
 
 ---
 
-## 🔧 Instalación y Ejecución
+## Instalación y Ejecución
 
 ### Paso 1: Clonar el Repositorio
 

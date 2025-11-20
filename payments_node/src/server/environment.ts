@@ -11,7 +11,6 @@ export function getConfig(environment: any): Config {
   if (!config) {
     // El archivo .env es un archivo que si esta presente se leen las propiedades
     // desde ese archivo, sino se toman estas de aca para entorno dev.
-    // .env es un archivo que no se debería subir al repo y cada server debería tener el suyo
     dotenv.config({ path: '.env' })
 
     config = {
@@ -104,20 +103,18 @@ function validateConfig(cfg: Config): void {
 
   // Si hay errores, lanzar excepción con todos los mensajes
   if (errors.length > 0) {
-    console.error('❌ Error en la configuración de variables de entorno:')
+    console.error('Error en la configuración de variables de entorno:')
     errors.forEach((error) => console.error(`   - ${error}`))
     console.error(
-      '\n💡 Revisa el archivo .env o las variables de entorno del sistema'
+      '\nRevisa el archivo .env o las variables de entorno del sistema'
     )
-    console.error(
-      '📝 Consulta .env.example para ver la configuración esperada\n'
-    )
+    console.error('Consulta .env.example para ver la configuración esperada\n')
     throw new Error('Configuración inválida. Ver errores arriba.')
   }
 
   // Log de configuración exitosa (solo en debug)
   if (cfg.logLevel === 'debug') {
-    console.log('✅ Configuración cargada exitosamente:')
+    console.log('Configuración cargada exitosamente:')
     console.log(`   - Puerto: ${cfg.port}`)
     console.log(`   - Log Level: ${cfg.logLevel}`)
     console.log(`   - MongoDB: ${maskSensitiveUrl(cfg.mongoDb)}`)

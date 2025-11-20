@@ -23,7 +23,7 @@ export class CardData {
     cvv: string,
     cardHolderName: string
   ) {
-    // Validaciones en el constructor garantizan que el objeto SIEMPRE sea válido
+    // Validaciones en el constructor que garantizan que el objeto sea válido
     this.validateCardNumber(cardNumber)
     this.validateExpiryDate(expiryDate)
     this.validateCVV(cvv)
@@ -94,7 +94,7 @@ export class CardData {
       throw new ValidationError([
         newError(
           'expiryDate',
-          'Formato de fecha inválido. Use MM/YY (ejemplo: 12/25)'
+          'Formato de fecha inválido. Usar MM/YY (ejemplo: 12/25)'
         ),
       ])
     }
@@ -172,14 +172,6 @@ export class CardData {
   }
 
   /**
-   * Obtener número enmascarado (ej: **** **** **** 1234)
-   */
-  getMaskedNumber(): string {
-    const lastFour = this.getLastFourDigits()
-    return `**** **** **** ${lastFour}`
-  }
-
-  /**
    * Obtener datos para almacenar en DB (sin CVV por seguridad)
    */
   toStorageObject(): object {
@@ -187,27 +179,6 @@ export class CardData {
       lastFourDigits: this.getLastFourDigits(),
       expiryDate: this.expiryDate,
       cardHolderName: this.cardHolderName,
-      // NUNCA almacenar el CVV ni el número completo
     }
-  }
-
-  /**
-   * Obtener el número completo (solo para procesamiento inmediato)
-   * ADVERTENCIA: Usar solo en el momento del pago, NUNCA almacenar
-   */
-  getCardNumber(): string {
-    return this.cardNumber
-  }
-
-  getExpiryDate(): string {
-    return this.expiryDate
-  }
-
-  getCVV(): string {
-    return this.cvv
-  }
-
-  getCardHolderName(): string {
-    return this.cardHolderName
   }
 }

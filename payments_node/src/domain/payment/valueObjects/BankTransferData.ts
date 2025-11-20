@@ -21,7 +21,7 @@ export class BankTransferData {
 
   /**
    * Validar CBU argentino (22 dígitos con dígito verificador)
-   * https://www.bcra.gob.ar/SistemasFinancierosYdePagos/Transferencias_cbu.asp
+   * https://es.wikipedia.org/wiki/Clave_Bancaria_Uniforme
    */
   private validateCBU(cbu: string): void {
     // Limpiar espacios y guiones
@@ -79,14 +79,6 @@ export class BankTransferData {
   }
 
   /**
-   * Obtener CBU enmascarado (ej: **** **** **** **** **1234)
-   */
-  getMaskedCBU(): string {
-    const lastFour = this.cbu.slice(-4)
-    return `**** **** **** **** **${lastFour}`
-  }
-
-  /**
    * Obtener datos para almacenar en DB
    */
   toStorageObject(): object {
@@ -95,17 +87,5 @@ export class BankTransferData {
       alias: this.alias,
       bankName: this.bankName,
     }
-  }
-
-  getCBU(): string {
-    return this.cbu
-  }
-
-  getAlias(): string | undefined {
-    return this.alias
-  }
-
-  getBankName(): string | undefined {
-    return this.bankName
   }
 }

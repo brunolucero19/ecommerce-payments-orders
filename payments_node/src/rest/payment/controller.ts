@@ -14,50 +14,14 @@ import { handle, ValidationError, newError } from '../../server/error'
 
 /**
  * POST /api/payments
- *
  * Crea un nuevo pago validando los datos según el método de pago
- *
- * Body:
- * {
- *   "orderId": "order123",
- *   "userId": "user456",
- *   "amount": 1500,
- *   "method": "credit_card" | "debit_card" | "bank_transfer" | "wallet",
- *   "paymentData": {
- *     // Para tarjeta:
- *     "cardNumber": "4532015112830366",
- *     "expiryDate": "12/25",
- *     "cvv": "123",
- *     "cardHolderName": "Juan Perez"
- *
- *     // Para transferencia:
- *     "cbu": "2850590940090418135201",
- *     "alias": "JUAN.PEREZ",
- *     "bankName": "Banco Galicia"
- *
- *     // Para wallet: (no requiere paymentData adicional)
- *   }
- * }
- *
- * Response:
- * {
- *   "id": "...",
- *   "orderId": "order123",
- *   "userId": "user456",
- *   "amount": 1500,
- *   "method": "credit_card",
- *   "status": "pending",
- *   "created": "..."
- * }
  */
 export async function createPayment(req: Request, res: Response) {
   try {
-    // El userId y token vienen de req (inyectados por validateToken middleware)
     const userId = req.user!.id
     const token = req.token!
     const { orderId, amount, method, paymentData } = req.body
 
-    // Validaciones básicas
     if (!orderId || !amount || !method) {
       throw new ValidationError([
         newError('body', 'orderId, amount y method son campos requeridos'),
@@ -82,7 +46,7 @@ export async function createPayment(req: Request, res: Response) {
       ])
     }
 
-    // IMPORTANTE: Validar que la orden existe en ordersgo antes de procesar el pago
+    // Validar que la orden existe en ordersgo antes de procesar el pago
     let order
     try {
       order = await ordersService.validateOrderForPayment(
@@ -119,7 +83,7 @@ export async function createPayment(req: Request, res: Response) {
           paymentData.cardHolderName
         )
 
-        // Guardar solo datos seguros (NO el CVV ni el número completo)
+        // Guardar solo datos seguros (Sin el CVV ni el número completo)
         validatedPaymentData = cardData.toStorageObject()
         break
 
@@ -161,7 +125,7 @@ export async function createPayment(req: Request, res: Response) {
         break
     }
 
-    // Crear el pago con información de la orden para pagos parciales
+    // Crear el pago con información de la orden
     console.log('[Controller] Creando pago con datos:', {
       orderId,
       userId,
@@ -260,21 +224,7 @@ export async function createPayment(req: Request, res: Response) {
 
 /**
  * GET /api/payments/:id
- *
  * Consulta un pago por su ID
- *
- * Response:
- * {
- *   "id": "...",
- *   "orderId": "order123",
- *   "userId": "user456",
- *   "amount": 1500,
- *   "method": "credit_card",
- *   "status": "approved",
- *   "transactionId": "txn789",
- *   "created": "...",
- *   "updated": "..."
- * }
  */
 export async function getPaymentById(req: Request, res: Response) {
   try {
@@ -314,26 +264,7 @@ export async function getPaymentById(req: Request, res: Response) {
 
 /**
  * GET /api/payments/order/:orderId
- *
  * Consulta todos los pagos asociados a una orden
- *
- * Response:
- * {
- *   "payments": [
- *     {
- *       "id": "...",
- *       "orderId": "order123",
- *       "userId": "user456",
- *       "amount": 1500,
- *       "status": "approved",
- *       "paymentNumber": 1,
- *       ...
- *     },
- *     ...
- *   ],
- *   "total": 2,
- *   "totalAmount": 3000
- * }
  */
 export async function getPaymentsByOrderId(req: Request, res: Response) {
   try {
@@ -392,18 +323,9 @@ export async function getPaymentsByOrderId(req: Request, res: Response) {
  * - status (opcional): Filtrar por estado (pending, approved, rejected, etc.)
  * - limit (opcional): Cantidad de resultados (default: 10)
  * - offset (opcional): Saltar resultados (default: 0)
- *
- * Response:
- * {
- *   "payments": [...],
- *   "total": 25,
- *   "limit": 10,
- *   "offset": 0
- * }
  */
 export async function getPaymentHistory(req: Request, res: Response) {
   try {
-    // El userId viene de req.user (inyectado por validateToken middleware)
     const userId = req.user!.id
     const { status, limit, offset } = req.query
 
@@ -463,22 +385,7 @@ export async function getPaymentHistory(req: Request, res: Response) {
 
 /**
  * POST /api/payments/:id/refund
- *
  * Reembolsa un pago aprobado
- *
- * Body:
- * {
- *   "reason": "Producto defectuoso" // opcional
- * }
- *
- * Response:
- * {
- *   "id": "...",
- *   "orderId": "...",
- *   "status": "refunded",
- *   "amount": 1500,
- *   ...
- * }
  */
 export async function refundPayment(
   req: Request,
@@ -513,27 +420,13 @@ export async function refundPayment(
 
 /**
  * GET /api/payments/preferred
- *
  * Obtiene el método de pago preferido del usuario autenticado
- *
- * Response:
- * {
- *   "method": "credit_card",
- *   "lastUsed": "2025-11-16T10:30:00.000Z",
- *   "successCount": 5
- * }
- *
- * Response (sin método preferido):
- * {
- *   "message": "No hay método de pago preferido"
- * }
  */
 export async function getPreferredMethod(
   req: Request,
   res: Response
 ): Promise<Response> {
   try {
-    // El userId viene del token (inyectado por validateToken middleware)
     const userId = req.user!.id
 
     const preferred = await paymentService.getPreferredMethod(userId)
@@ -556,23 +449,8 @@ export async function getPreferredMethod(
 
 /**
  * PUT /api/payments/:id/approve
- *
  * Aprueba un pago en estado PENDING
  * Útil para aprobar manualmente transferencias bancarias o pagos que requieren confirmación
- *
- * Body (opcional):
- * {
- *   "transactionId": "BANK-12345"
- * }
- *
- * Response:
- * {
- *   "id": "...",
- *   "orderId": "order123",
- *   "status": "approved",
- *   "transactionId": "BANK-12345",
- *   "message": "Pago aprobado exitosamente"
- * }
  */
 export async function approvePaymentEndpoint(
   req: Request,
