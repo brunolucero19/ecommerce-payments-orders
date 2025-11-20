@@ -21,9 +21,6 @@ function isAxiosError(error: any): boolean {
 
 /**
  * Repository que se comunica con authgo para validar tokens
- *
- * Hace llamadas HTTP al servicio de autenticación para obtener
- * información del usuario a partir de un token JWT.
  */
 export class SecurityRepository {
   private authServiceUrl: string
@@ -32,13 +29,6 @@ export class SecurityRepository {
     this.authServiceUrl = authServiceUrl
   }
 
-  /**
-   * Valida un token JWT contra authgo
-   *
-   * @param token - Token JWT completo (incluyendo "Bearer ")
-   * @returns Promise<User> - Información del usuario si el token es válido
-   * @throws Error si el token es inválido o authgo no responde
-   */
   async validateToken(token: string): Promise<User> {
     try {
       const response = await axios.get<AuthUserResponse>(
