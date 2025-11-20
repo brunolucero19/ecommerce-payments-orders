@@ -10,6 +10,8 @@ type EventService interface {
 	SavePlaceOrder(data *PlacedOrderData) (*Event, error)
 	SavePayment(data *PaymentEvent) (*Event, error)
 	SaveArticleExist(data *ValidationEvent) (*Event, error)
+	NewCancelEvent(orderId, userId, reason string) *Event
+	Save(event *Event) (*Event, error)
 	FindByOrderId(orderId string) ([]*Event, error)
 }
 
@@ -101,6 +103,20 @@ func (s *eventService) SavePayment(data *PaymentEvent) (*Event, error) {
 	}
 
 	return event, nil
+}
+
+// NewCancelEvent creates a new cancel event
+func (s *eventService) NewCancelEvent(orderId, userId, reason string) *Event {
+	return NewCancelEvent(orderId, userId, reason)
+}
+
+// Save saves an event directly
+func (s *eventService) Save(event *Event) (*Event, error) {
+	savedEvent, err := s.repository.Insert(event)
+	if err != nil {
+		return nil, err
+	}
+	return savedEvent, nil
 }
 
 // FindByOrderId returns all events for an order

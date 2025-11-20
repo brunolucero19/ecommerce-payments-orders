@@ -136,6 +136,11 @@ export class OrdersService {
       )
     }
 
+    // Validar que la orden no esté cancelada
+    if (order.status === 'canceled') {
+      throw new Error(`Esta orden fue cancelada y no puede recibir pagos`)
+    }
+
     // Calcular el monto restante a pagar
     const remainingAmount = order.totalPrice - order.totalPayment
 

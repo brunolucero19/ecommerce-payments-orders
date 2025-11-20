@@ -16,6 +16,7 @@ const (
 	Payment_Defined OrderStatus = "payment_defined"
 	PartiallyPaid   OrderStatus = "partially_paid"
 	Paid            OrderStatus = "paid"
+	Canceled        OrderStatus = "canceled"
 )
 
 // Estuctura basica de del evento

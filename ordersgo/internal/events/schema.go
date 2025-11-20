@@ -22,18 +22,20 @@ const (
 	Place      EventType = "place_order"
 	Validation EventType = "aticle_validation"
 	Payment    EventType = "payment"
+	Cancel     EventType = "order_canceled"
 )
 
 // Estuctura basica de del evento
 type Event struct {
-	ID         primitive.ObjectID `bson:"_id,omitempty"`
-	OrderId    string             `bson:"orderId" validate:"required,min=1,max=100"`
-	Type       EventType          `bson:"type" validate:"required"`
-	PlaceEvent *PlaceEvent        `bson:"placeEvent"`
-	Validation *ValidationEvent   `bson:"validation"`
-	Payment    *PaymentEvent      `bson:"payment"`
-	Created    time.Time          `bson:"created"`
-	Updated    time.Time          `bson:"updated"`
+	ID          primitive.ObjectID `bson:"_id,omitempty"`
+	OrderId     string             `bson:"orderId" validate:"required,min=1,max=100"`
+	Type        EventType          `bson:"type" validate:"required"`
+	PlaceEvent  *PlaceEvent        `bson:"placeEvent"`
+	Validation  *ValidationEvent   `bson:"validation"`
+	Payment     *PaymentEvent      `bson:"payment"`
+	CancelEvent *CancelEvent       `bson:"cancelEvent"`
+	Created     time.Time          `bson:"created"`
+	Updated     time.Time          `bson:"updated"`
 }
 
 // ValidateSchema valida la estructura para ser insertada en la db
@@ -69,6 +71,11 @@ type ValidationEvent struct {
 	IsValid     bool    `bson:"isValid" json:"valid"`
 	Stock       int     `bson:"stock" json:"stock"`
 	Price       float32 `bson:"price" json:"price"`
+}
+
+type CancelEvent struct {
+	UserId string `bson:"userId"`
+	Reason string `bson:"reason"`
 }
 
 // NewPlaceEvent Nueva instancia de place event
@@ -107,5 +114,23 @@ func newValidationEvent(
 		Validation: validationEvent,
 		Created:    time.Now(),
 		Updated:    time.Now(),
+	}
+}
+
+// CancelEvent Nueva instancia de cancel event
+func NewCancelEvent(
+	orderId string,
+	userId string,
+	reason string,
+) *Event {
+	return &Event{
+		OrderId: orderId,
+		Type:    Cancel,
+		CancelEvent: &CancelEvent{
+			UserId: userId,
+			Reason: reason,
+		},
+		Created: time.Now(),
+		Updated: time.Now(),
 	}
 }

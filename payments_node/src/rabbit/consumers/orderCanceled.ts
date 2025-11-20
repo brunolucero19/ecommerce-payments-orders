@@ -6,7 +6,7 @@ import * as paymentService from '../../domain/payment/service'
 import * as walletService from '../../domain/wallet/service'
 import { publishPaymentRefunded } from '../events/publishers'
 
-const EXCHANGE = 'order_events'
+const EXCHANGE = 'payments_exchange'
 const ROUTING_KEY = 'order.canceled'
 const QUEUE = 'payments_order_canceled'
 const MAX_RETRIES = 3
@@ -22,8 +22,9 @@ interface OrderCanceledEvent {
 /**
  * Procesa un evento de orden cancelada y reembolsa todos los pagos aprobados.
  */
-async function processOrderCanceled(event: OrderCanceledEvent): Promise<void> {
-  const { orderId, userId, reason } = event
+async function processOrderCanceled(event: any): Promise<void> {
+  // El evento viene en formato { message: { orderId, userId, ... } }
+  const { orderId, userId, reason } = event.message || event
 
   console.log(`[OrderCanceled] Procesando cancelación de orden ${orderId}`)
 
@@ -152,8 +153,8 @@ export async function startOrderCanceledConsumer(): Promise<void> {
 
     const channel = await RabbitClient.getChannel()
 
-    // Asegurar que el exchange existe
-    await channel.assertExchange(EXCHANGE, 'topic', { durable: true })
+    // Asegurar que el exchange existe (ya se crea en initializeExchanges)
+    await channel.assertExchange(EXCHANGE, 'topic', { durable: false })
 
     // Crear la cola
     await channel.assertQueue(QUEUE, { durable: true })
@@ -172,7 +173,7 @@ export async function startOrderCanceledConsumer(): Promise<void> {
         }
 
         try {
-          const event: OrderCanceledEvent = JSON.parse(msg.content.toString())
+          const event = JSON.parse(msg.content.toString())
           console.log(`[OrderCanceled] Evento recibido:`, event)
 
           await processOrderCanceled(event)

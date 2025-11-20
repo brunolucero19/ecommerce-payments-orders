@@ -50,6 +50,8 @@ func (s *orderService) update(order *Order, event *events.Event) *Order {
 		order = s.updateValidation(order, event)
 	case events.Payment:
 		order = s.updatePayment(order, event)
+	case events.Cancel:
+		order = s.updateCancel(order, event)
 	}
 	return order
 }
@@ -133,18 +135,28 @@ func (s *orderService) updatePayment(o *Order, e *events.Event) *Order {
 	}
 
 	// Actualizar estado según pagos
-	totalPrice := o.TotalPrice()
-	if totalApproved >= totalPrice && totalPrice > 0 {
-		o.Status = Paid
-	} else if totalApproved > 0 {
-		o.Status = PartiallyPaid
-	} else if o.Status == Paid || o.Status == PartiallyPaid {
-		// Si había pagos pero se reembolsaron todos
-		o.Status = Payment_Defined
+	// IMPORTANTE: No modificar el estado si la orden ya fue cancelada
+	if o.Status != Canceled {
+		totalPrice := o.TotalPrice()
+		if totalApproved >= totalPrice && totalPrice > 0 {
+			o.Status = Paid
+		} else if totalApproved > 0 {
+			o.Status = PartiallyPaid
+		} else if o.Status == Paid || o.Status == PartiallyPaid {
+			// Si había pagos pero se reembolsaron todos
+			o.Status = Payment_Defined
+		}
 	}
 
 	o.Updated = e.Updated
 
+	return o
+}
+
+func (s *orderService) updateCancel(o *Order, e *events.Event) *Order {
+	// Marcar la orden como cancelada
+	o.Status = Canceled
+	o.Updated = e.Updated
 	return o
 }
 

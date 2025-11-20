@@ -20,4 +20,5 @@ func initRoutes(engine *gin.Engine) {
 	initGetOdersIdUpdate(engine)
 	initGetOrders(engine)
 	initPostPayment(engine)
+	initDeleteOrdersId(engine)
 }
