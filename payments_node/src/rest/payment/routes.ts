@@ -37,10 +37,10 @@ export function paymentRoutes(): Router {
 
   /**
    * GET /api/payments/order/:orderId
-   * Consultar pagos de una orden
+   * Consultar todos los pagos asociados a una orden
    * Requiere: Authorization header con Bearer token
    */
-  router.get('/order/:orderId', validateToken, controller.getPaymentByOrderId)
+  router.get('/order/:orderId', validateToken, controller.getPaymentsByOrderId)
 
   /**
    * GET /api/payments/:id

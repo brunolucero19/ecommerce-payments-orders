@@ -95,8 +95,8 @@ async function refundPaymentWithRetry(
 
     // Procesar según método de pago
     if (payment.method === PaymentMethod.WALLET) {
-      // Reembolso inmediato a billetera
-      await walletService.refund(payment.userId, payment.amount, reason)
+      // Reembolso inmediato a billetera usando deposit
+      await walletService.deposit(payment.userId, payment.amount)
       console.log(
         `[OrderCanceled] Reembolsado ${payment.amount} a billetera del usuario ${payment.userId}`
       )

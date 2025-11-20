@@ -34,6 +34,7 @@ export interface Article {
 export interface Payment {
   method: string
   amount: number
+  status: string
 }
 
 /**

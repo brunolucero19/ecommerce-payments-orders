@@ -46,23 +46,22 @@ El token se obtiene del servicio de autenticación (authgo) en el puerto 3000.
 
 ### Payments
 
-| Método | Endpoint                       | Descripción                    |
-| ------ | ------------------------------ | ------------------------------ |
-| POST   | `/api/payments`                | Crear un nuevo pago            |
-| GET    | `/api/payments/:id`            | Obtener pago por ID            |
-| GET    | `/api/payments/order/:orderId` | Obtener pagos de una orden     |
-| GET    | `/api/payments/history`        | Historial de pagos del usuario |
-| GET    | `/api/payments/preferred`      | Método de pago preferido       |
-| PUT    | `/api/payments/:id/approve`    | Aprobar pago manualmente       |
-| POST   | `/api/payments/:id/refund`     | Reembolsar un pago             |
+| Método | Endpoint                       | Descripción                          |
+| ------ | ------------------------------ | ------------------------------------ |
+| POST   | `/api/payments`                | Crear un nuevo pago                  |
+| GET    | `/api/payments/:id`            | Obtener pago por ID                  |
+| GET    | `/api/payments/order/:orderId` | Obtener todos los pagos de una orden |
+| GET    | `/api/payments/history`        | Historial de pagos del usuario       |
+| GET    | `/api/payments/preferred`      | Método de pago preferido             |
+| PUT    | `/api/payments/:id/approve`    | Aprobar pago manualmente             |
+| POST   | `/api/payments/:id/refund`     | Reembolsar un pago                   |
 
 ### Wallet
 
-| Método | Endpoint              | Descripción           |
-| ------ | --------------------- | --------------------- |
-| POST   | `/api/wallet/deposit` | Depositar dinero      |
-| GET    | `/api/wallet/balance` | Consultar saldo       |
-| POST   | `/api/wallet/refund`  | Reembolso a billetera |
+| Método | Endpoint              | Descripción      |
+| ------ | --------------------- | ---------------- |
+| POST   | `/api/wallet/deposit` | Depositar dinero |
+| GET    | `/api/wallet/balance` | Consultar saldo  |
 
 ### Health
 

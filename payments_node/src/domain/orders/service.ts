@@ -59,16 +59,15 @@ export class OrdersService {
         )
       }
 
-      // Calcular totalPayment si no viene en la respuesta
+      // Calcular totalPayment si no viene en la respuesta (solo pagos aprobados)
       if (response.data.totalPayment === undefined && response.data.payments) {
         response.data.totalPayment = Array.isArray(response.data.payments)
-          ? response.data.payments.reduce(
-              (total, payment) => total + payment.amount,
-              0
-            )
+          ? response.data.payments
+              .filter((payment) => payment.status === 'approved')
+              .reduce((total, payment) => total + payment.amount, 0)
           : 0
         console.log(
-          `[OrdersService] totalPayment calculado: ${response.data.totalPayment}`
+          `[OrdersService] totalPayment calculado: ${response.data.totalPayment} (solo pagos aprobados)`
         )
       } else if (response.data.totalPayment === undefined) {
         response.data.totalPayment = 0

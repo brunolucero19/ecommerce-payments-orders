@@ -503,9 +503,9 @@ export const swaggerSpec = {
     '/api/payments/order/{orderId}': {
       get: {
         tags: ['Payments'],
-        summary: 'Obtener pagos de una orden',
+        summary: 'Obtener todos los pagos de una orden',
         description:
-          'Retorna el último pago realizado para una orden específica',
+          'Retorna todos los pagos asociados a una orden específica, incluyendo pagos parciales. Incluye información agregada como total de pagos y monto total aprobado.',
         security: [{ BearerAuth: [] }],
         parameters: [
           {
@@ -521,11 +521,31 @@ export const swaggerSpec = {
         ],
         responses: {
           '200': {
-            description: 'Pago encontrado',
+            description: 'Pagos encontrados',
             content: {
               'application/json': {
                 schema: {
-                  $ref: '#/components/schemas/Payment',
+                  type: 'object',
+                  properties: {
+                    payments: {
+                      type: 'array',
+                      items: {
+                        $ref: '#/components/schemas/Payment',
+                      },
+                      description: 'Array de todos los pagos de la orden',
+                    },
+                    total: {
+                      type: 'number',
+                      description: 'Cantidad total de pagos',
+                      example: 2,
+                    },
+                    totalAmount: {
+                      type: 'number',
+                      format: 'float',
+                      description: 'Suma total de pagos aprobados',
+                      example: 25000.0,
+                    },
+                  },
                 },
               },
             },
@@ -616,7 +636,7 @@ export const swaggerSpec = {
         tags: ['Payments'],
         summary: 'Obtener método de pago preferido',
         description:
-          'Retorna el método de pago preferido del usuario (último método usado exitosamente)',
+          'Retorna el método de pago preferido del usuario basado en el método más utilizado con pagos exitosos. Incluye conteo de uso y fecha del último uso.',
         security: [{ BearerAuth: [] }],
         responses: {
           '200': {
@@ -854,64 +874,6 @@ export const swaggerSpec = {
               'application/json': {
                 schema: {
                   $ref: '#/components/schemas/Wallet',
-                },
-              },
-            },
-          },
-          '401': {
-            description: 'No autenticado',
-          },
-        },
-      },
-    },
-    '/api/wallet/refund': {
-      post: {
-        tags: ['Wallet'],
-        summary: 'Reembolsar dinero a la billetera',
-        description:
-          'Acredita un reembolso en la billetera del usuario. Similar a un depósito pero marcado como reembolso.',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['amount'],
-                properties: {
-                  amount: {
-                    type: 'number',
-                    format: 'float',
-                    description: 'Monto a reembolsar (debe ser mayor a 0)',
-                    example: 15000.0,
-                  },
-                  reason: {
-                    type: 'string',
-                    description: 'Motivo del reembolso (opcional)',
-                    example: 'Reembolso por orden cancelada',
-                  },
-                },
-              },
-            },
-          },
-        },
-        responses: {
-          '200': {
-            description: 'Reembolso acreditado exitosamente',
-            content: {
-              'application/json': {
-                schema: {
-                  $ref: '#/components/schemas/Wallet',
-                },
-              },
-            },
-          },
-          '400': {
-            description: 'Monto inválido',
-            content: {
-              'application/json': {
-                schema: {
-                  $ref: '#/components/schemas/Error',
                 },
               },
             },

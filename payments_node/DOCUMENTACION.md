@@ -336,7 +336,7 @@ si la orden no existe en ordersgo
 `404 NOT FOUND`
 si el pago no existe
 
-### Consultar pagos de una orden
+### Consultar todos los pagos de una orden
 
 `GET /api/payments/order/:orderId`
 
@@ -350,18 +350,34 @@ si el pago no existe
 
 ```json
 {
-  "id": "payment123",
-  "orderId": "order123",
-  "amount": 1500,
-  "method": "wallet",
-  "status": "approved",
-  "partialPayment": true,
-  "paymentNumber": 1,
-  "totalPaidSoFar": 1500,
-  "remainingAmount": 500,
-  "created": "2025-11-16T10:30:00.000Z"
+  "payments": [
+    {
+      "id": "payment123",
+      "orderId": "order123",
+      "amount": 1500,
+      "method": "wallet",
+      "status": "approved",
+      "partialPayment": true,
+      "paymentNumber": 1,
+      "created": "2025-11-16T10:30:00.000Z"
+    },
+    {
+      "id": "payment124",
+      "orderId": "order123",
+      "amount": 500,
+      "method": "credit_card",
+      "status": "approved",
+      "partialPayment": false,
+      "paymentNumber": 2,
+      "created": "2025-11-16T11:00:00.000Z"
+    }
+  ],
+  "total": 2,
+  "totalAmount": 2000
 }
 ```
+
+**Nota**: `totalAmount` solo suma los pagos con estado `approved`.
 
 ### Consultar historial de pagos
 
@@ -557,34 +573,12 @@ si el pago no existe
 }
 ```
 
-### Reembolsar a wallet
+### Reembolsos
 
-`POST /api/wallet/refund`
-
-**Headers**
-
-- Authorization: Bearer token (requerido)
-
-**Body**
-
-```json
-{
-  "amount": 1500,
-  "reason": "Reembolso por cancelación de orden"
+**Nota**: Los reembolsos a wallet se procesan automáticamente usando `POST /api/wallet/deposit` cuando se reembolsa un pago realizado con método WALLET a través del endpoint `POST /api/payments/:id/refund`.
 }
-```
 
-**Response**
-
-`200 OK`
-
-```json
-{
-  "userId": "user456",
-  "balance": 9000,
-  "currency": "ARS"
-}
-```
+````
 
 ## Interfaz asincrónica (RabbitMQ)
 
@@ -607,7 +601,7 @@ Publica en topic exchange `payments_exchange` con routing key `payment.success`
   "transactionId": "txn789",
   "timestamp": "2025-11-16T10:30:00.000Z"
 }
-```
+````
 
 #### Pago parcial exitoso
 

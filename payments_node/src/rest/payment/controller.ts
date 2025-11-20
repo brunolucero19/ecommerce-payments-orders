@@ -315,19 +315,27 @@ export async function getPaymentById(req: Request, res: Response) {
 /**
  * GET /api/payments/order/:orderId
  *
- * Consulta el pago asociado a una orden
+ * Consulta todos los pagos asociados a una orden
  *
  * Response:
  * {
- *   "id": "...",
- *   "orderId": "order123",
- *   "userId": "user456",
- *   "amount": 1500,
- *   "status": "approved",
- *   ...
+ *   "payments": [
+ *     {
+ *       "id": "...",
+ *       "orderId": "order123",
+ *       "userId": "user456",
+ *       "amount": 1500,
+ *       "status": "approved",
+ *       "paymentNumber": 1,
+ *       ...
+ *     },
+ *     ...
+ *   ],
+ *   "total": 2,
+ *   "totalAmount": 3000
  * }
  */
-export async function getPaymentByOrderId(req: Request, res: Response) {
+export async function getPaymentsByOrderId(req: Request, res: Response) {
   try {
     const { orderId } = req.params
 
@@ -337,27 +345,38 @@ export async function getPaymentByOrderId(req: Request, res: Response) {
       ])
     }
 
-    const payment = await paymentService.findByOrderId(orderId)
+    const payments = await paymentService.findAllByOrderId(orderId)
 
-    if (!payment) {
+    if (payments.length === 0) {
       return res.status(404).send({
-        error: 'No se encontró pago asociado a esta orden',
+        error: 'No se encontraron pagos asociados a esta orden',
       })
     }
 
+    // Calcular total pagado
+    const totalAmount = payments.reduce((sum, p) => {
+      return p.status === PaymentStatus.APPROVED ? sum + p.amount : sum
+    }, 0)
+
     return res.status(200).send({
-      id: payment._id,
-      orderId: payment.orderId,
-      userId: payment.userId,
-      amount: payment.amount,
-      currency: payment.currency,
-      method: payment.method,
-      status: payment.status,
-      transactionId: payment.transactionId,
-      errorMessage: payment.errorMessage,
-      errorCode: payment.errorCode,
-      created: payment.created,
-      updated: payment.updated,
+      payments: payments.map((p) => ({
+        id: p._id,
+        orderId: p.orderId,
+        userId: p.userId,
+        amount: p.amount,
+        currency: p.currency,
+        method: p.method,
+        status: p.status,
+        transactionId: p.transactionId,
+        errorMessage: p.errorMessage,
+        errorCode: p.errorCode,
+        paymentNumber: p.paymentNumber,
+        partialPayment: p.partialPayment,
+        created: p.created,
+        updated: p.updated,
+      })),
+      total: payments.length,
+      totalAmount,
     })
   } catch (err) {
     return handle(res, err)

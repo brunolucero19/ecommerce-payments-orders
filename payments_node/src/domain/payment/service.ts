@@ -18,6 +18,7 @@ import {
   publishPaymentFailed,
   publishPaymentRefunded,
 } from '../../rabbit/events'
+import * as walletService from '../wallet/service'
 
 /**
  * Servicio de dominio para Payment
@@ -84,11 +85,10 @@ export async function findById(paymentId: string): Promise<IPayment | null> {
 }
 
 /**
- * Busca pagos por orderId
+ * Busca todos los pagos por orderId (ordenados por número de pago)
  */
-export async function findByOrderId(orderId: string): Promise<IPayment | null> {
-  const payments = await Payment.find({ orderId }).sort({ created: -1 })
-  return payments.length > 0 ? payments[0] : null
+export async function findAllByOrderId(orderId: string): Promise<IPayment[]> {
+  return await Payment.find({ orderId }).sort({ paymentNumber: 1 })
 }
 
 /**
@@ -271,6 +271,22 @@ export async function refundPayment(
     ])
   }
 
+  // Si el pago fue con wallet, devolver el dinero
+  if (payment.method === PaymentMethod.WALLET) {
+    try {
+      console.log(
+        `[PaymentService] Devolviendo ${payment.amount} ${payment.currency} a wallet del usuario ${payment.userId}`
+      )
+      await walletService.deposit(payment.userId, payment.amount)
+      console.log('[PaymentService] Saldo devuelto exitosamente a wallet')
+    } catch (error) {
+      console.error('[PaymentService] Error al devolver saldo a wallet:', error)
+      throw new ValidationError([
+        newError('wallet', 'Error al devolver el saldo a la wallet'),
+      ])
+    }
+  }
+
   // Cambiar estado a refunded usando el método del modelo
   payment.refund()
   const savedPayment = await payment.save()
@@ -339,33 +355,66 @@ export async function countByFilters(filters: any): Promise<number> {
 /**
  * Guarda o actualiza el método de pago preferido del usuario
  * Se llama automáticamente cuando un pago es exitoso
+ *
+ * Determina el método preferido contando los pagos aprobados por método
  */
 export async function savePreferredMethod(
   userId: string,
   method: PaymentMethod
 ): Promise<void> {
   try {
+    // Contar pagos aprobados por cada método para este usuario
+    const paymentsByMethod = await Payment.aggregate([
+      {
+        $match: {
+          userId,
+          status: PaymentStatus.APPROVED,
+        },
+      },
+      {
+        $group: {
+          _id: '$method',
+          count: { $sum: 1 },
+          lastUsed: {
+            $max: {
+              $ifNull: ['$updated', '$created'],
+            },
+          },
+        },
+      },
+      {
+        $sort: { count: -1, lastUsed: -1 },
+      },
+    ])
+
+    if (paymentsByMethod.length === 0) {
+      return // No hay pagos aprobados aún
+    }
+
+    // El método preferido es el que tiene más pagos aprobados
+    const preferred = paymentsByMethod[0]
+
     const existing = await PreferredPaymentMethod.findOne({ userId })
 
     if (existing) {
-      // Actualizar método existente
-      existing.method = method
-      existing.lastUsed = new Date()
-      existing.successCount += 1
+      // Actualizar método existente con el más usado
+      existing.method = preferred._id
+      existing.lastUsed = preferred.lastUsed
+      existing.successCount = preferred.count
       await existing.save()
     } else {
       // Crear nuevo registro
-      const preferred = new PreferredPaymentMethod({
+      const newPreferred = new PreferredPaymentMethod({
         userId,
-        method,
-        lastUsed: new Date(),
-        successCount: 1,
+        method: preferred._id,
+        lastUsed: preferred.lastUsed,
+        successCount: preferred.count,
       })
-      await preferred.save()
+      await newPreferred.save()
     }
 
     console.log(
-      `[PreferredMethod] Actualizado método preferido de usuario ${userId}: ${method}`
+      `[PreferredMethod] Usuario ${userId}: método preferido ${preferred._id} con ${preferred.count} pagos aprobados`
     )
   } catch (error) {
     console.error('[PreferredMethod] Error guardando método preferido:', error)

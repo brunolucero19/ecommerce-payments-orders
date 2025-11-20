@@ -28,12 +28,5 @@ export function walletRoutes(): Router {
    */
   router.get('/balance', validateToken, controller.getBalance)
 
-  /**
-   * POST /api/wallet/refund
-   * Procesar un reembolso a la wallet del usuario autenticado
-   * Requiere: Authorization header con Bearer token
-   */
-  router.post('/refund', validateToken, controller.refund)
-
   return router
 }

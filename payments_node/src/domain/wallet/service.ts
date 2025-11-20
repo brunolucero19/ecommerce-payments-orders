@@ -95,28 +95,3 @@ export async function hasBalance(
   const wallet = await getOrCreateWallet(userId)
   return wallet.hasBalance(amount)
 }
-
-/**
- * Procesa un reembolso (refund)
- */
-export async function refund(
-  userId: string,
-  amount: number,
-  reason: string
-): Promise<IWallet> {
-  if (amount <= 0) {
-    throw new ValidationError([
-      newError('amount', 'El monto a reembolsar debe ser mayor a 0'),
-    ])
-  }
-
-  console.log(
-    `Procesando reembolso de $${amount} para usuario ${userId}. Razón: ${reason}`
-  )
-
-  const wallet = await getOrCreateWallet(userId)
-  wallet.deposit(amount)
-  await wallet.save()
-
-  return wallet
-}
