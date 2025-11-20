@@ -105,7 +105,6 @@ export class OrdersService {
    * - La orden existe
    * - El monto del pago no excede el total de la orden
    * - La orden no está en estado inválido o cancelada
-  
    */
   async validateOrderForPayment(
     orderId: string,

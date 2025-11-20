@@ -2,8 +2,7 @@
 
 /**
  * Interface que representa una orden de ordersgo
- *
- *  */
+ */
 export interface Order {
   orderId: string
   status: string
