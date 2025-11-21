@@ -93,30 +93,8 @@ async function refundPaymentWithRetry(
       return
     }
 
-    // Procesar según método de pago
-    if (payment.method === PaymentMethod.WALLET) {
-      // Reembolso inmediato a billetera usando deposit
-      await walletService.deposit(payment.userId, payment.amount)
-      console.log(
-        `[OrderCanceled] Reembolsado ${payment.amount} a billetera del usuario ${payment.userId}`
-      )
-    } else {
-      // Para tarjetas: solo marcamos como reembolsado
-      console.log(
-        `[OrderCanceled] Pago ${paymentId} con ${payment.method} marcado para reembolso manual. ` +
-          `Monto: ${payment.amount}, Usuario: ${payment.userId}`
-      )
-    }
-
-    // Marcar el pago como reembolsado
-    await paymentService.refundPayment(paymentId)
-
-    // Obtener el pago actualizado para publicar el evento
-    const updatedPayment = await paymentService.findById(paymentId)
-    if (updatedPayment) {
-      // Publicar evento de reembolso
-      await publishPaymentRefunded(updatedPayment, reason)
-    }
+    // Reembolsar el pago (esto ya maneja wallet/tarjeta y publica el evento)
+    await paymentService.refundPayment(paymentId, reason)
 
     console.log(`[OrderCanceled] Pago ${paymentId} reembolsado exitosamente`)
   } catch (error) {
